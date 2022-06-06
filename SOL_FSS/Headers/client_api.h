@@ -1,6 +1,8 @@
-
-#include <stdbool.h>
-#include <util.h>
+#include<stdbool.h>
+#include<stdio.h>
+#include<stddef.h>
+#include<stdlib.h>
+#include "../Headers/util.h"
 
 /**
  * Apre una connessione verso il server tramite la socket indicata.
@@ -10,7 +12,42 @@
  *  abstime - al raggiungimento del tempo di timeout si interrompe il tentativo di connessione
  *  0 se OK, -1 in caso di errore, setta errno opportunamente
  */
-int openConnection(const char* sockname, int msec, const struct timespec abstime);
+int openConnection(const char* sockname, int msec, const struct timespec abstime){
+    
+    if(conn_set==1){//se ho gia una connessione in corso
+        perror("connessione gia stabilita con \n");
+        errno=ENOENT;
+        return -1;
+    }
+    else{//se connessione puo avvenire
+        /*preparo le variabili per la connessione*/
+        strncpy(sa.sun_path,sockname,SOCKETPATHMAX);
+        sa.sun_family=AF_UNIX;
+        fd_socket=socket(AF_UNIX,SOCK_STREAM,0);
+        int isconnected=NOTCONNECTED;
+
+        /*creo il timer per il timeout*/
+        float time=0;
+        
+        /*provo a connettermi*/
+        while( ( (isconnected=(connect(fd_socket,(struct sockaddr *)&sa,sizeof(sa)))) !=0 ) && (time < TIMEOUT)){
+            if(errno==ENOENT){
+                if(p_flag)printf("is connected:%d\nattendo %d millisecondi ,riprovo a connettermi\n",isconnected,WAIT_CONN_TRY);
+                msleep(WAIT_CONN_TRY);
+                time+=(WAIT_CONN_TRY/1000.0);
+            }
+            else return -1;
+        }
+        if(isconnected==0){
+            if(p_flag)printf("%sconnessione con %d effettuata\n",separator,fd_socket);
+            conn_set=1;
+            return 0;
+        }
+        else return -1;
+    }
+
+
+}
 
 /**
  *  Chiude la connessione verso il server tramite la socket indicata
@@ -18,7 +55,16 @@ int openConnection(const char* sockname, int msec, const struct timespec abstime
  *  sockname - nome della socket da cui disconnettersi
  *  0 se Ok, -1 in caso di errore, setta errno opportunamente
  */
-int closeConnection(const char* sockname);
+int closeConnection(const char* sockname){
+    if(close(fd_socket)!=0){
+        perror("errore chiusura socket\n");
+        return -1;
+    }
+    else{
+        if(p_flag)printf("%schiusura connessione effettuata%s",separator,separator);
+        return 0;
+    }
+}
 
 /**
  * Apre il file sul server

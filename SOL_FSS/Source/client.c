@@ -1,16 +1,30 @@
-#include"../Headers/util.h"
+//#include"../Headers/util.h"
 #include"../Headers/client_api.h"
 
 /* ################### HANDLER FUNCTIONS #################### */
+
 void handle_p();
 void handle_h();
+void handle_f();
+void handle_t();
 
-int main(int argc, char const *argv[]){
-    
+
+/* ################### MAIN ################################## */
+
+
+int main(int argc, char *argv[]){
     if(argc<1){
-        perror("input insufficienti");
+            perror("input insufficienti");
+            exit(EXIT_FAILURE);
+        }
+
+    /*Variabili Interne Client*/
+    struct timespec timer;
+    if( clock_gettime(CLOCK_REALTIME, &timer) == -1)
         exit(EXIT_FAILURE);
-    }
+    timer.tv_sec += TIMEOUT;
+    
+   /* Controllo Casi p e h*/
     for(int i = 0; i < argc; i++){
         if(strlen(argv[i])>MAXARGUMENTLENGHT) {
             printf("\nArgomento %d non rispetta il limite di lunghezza\n", i);
@@ -23,37 +37,49 @@ int main(int argc, char const *argv[]){
             exit(EXIT_SUCCESS);
         }
     }
-    int opt;
-    //gestione input
-    while( (x_flag==0) || ((opt=getopt(argc,argv,":f:w:W:D:r:R:d:t:l:u:c:px"))!=-1) ){//TODO controllare se la logica va bene
-        switch (opt){
-        case 'f':
-            if(f_flag==1){
-                perror("socketname già settata\n");
-                exit(EXIT_FAILURE);
-            }
-            else{
-                f_flag=1;
-                if(strlen(optarg)<MAXSOCKETNAME){
-                    strcpy(socketname,optarg);
-                    if(p_flag)printf("nome socket ricevuto correttamente\n");
-                }
-            }
 
-            break;
-        
-        default:
-            break;
-        }
+    /*Gestione Input Argv*/
+    int opt;
+    while( (x_flag==0) && ((opt=getopt(argc,argv,":f:w:W:D:r:R:d:t:l:u:c:px"))!=-1) ){
+        switch(opt){
+            case 'f':
+                if(f_flag==1){
+                    perror("socketname già settata\n");
+                    exit(EXIT_FAILURE);
+                }
+                else{
+                    if(strlen(optarg)<MAXSOCKETNAME){//se nome va bene
+                        f_flag=1;
+                        strncpy(socketname,optarg,sizeof(optarg));
+                        if(p_flag)printf("nome socket ricevuto correttamente %s\n",socketname);
+                        handle_f(socketname,timer);
+                    }
+                    else{
+                        perror("lunghezza nome socket non idonea\n");
+                        exit(EXIT_FAILURE);
+                    }
+                }
+                break;
+            case 'x':
+                handle_x(socketname);
+                
+            case 't':
+                handle_t(optarg);
+            default:
+                break;
+            }
     }
     return 0;
 }
+
 
 /*abilita le stampe per ogni operazione*/
 void handle_p(){
     p_flag=1;
     printf("settato flag p,stampe abilitate\n");
 }
+
+
 /*elenca i comandi dispobili per ogni client*/
 void handle_h(){
      printf(" HELPER:\n\
@@ -71,3 +97,38 @@ void handle_h(){
     -c file1[,file2]: lista di file da rimuovere dal server \n\
     -p: abilita le stampe sullo standard output \n   ");
 } 
+
+
+/*apre la connessione con il server al nome passato come argomento e gestisce errori*/
+void handle_f(char * socketname,struct timespec timer){
+    timer.tv_sec=TIMEOUT;
+    int err=openConnection(socketname,WAIT_CONN_TRY,timer);
+    if(err==0){
+        if(p_flag)printf("OpenConnection terminata con successo\n");
+    }
+    else{
+        perror("openConnection terminata con errore\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+/*funzione per settare tempo richieste successive*/
+void handle_t(char * time){
+    wait_time=(int)atol(time);
+    if(p_flag)printf("tempo per richieste successive settato a %d\n",wait_time);
+}
+
+
+/*funzione che chiude la connessione con la socket*/
+void handle_x(char * sock){
+    x_flag=1;
+    if(p_flag)printf("caso x ricevuto,termino\n");
+    if(conn_set==1){
+        if(closeConnection(socketname)!=0){
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
+
