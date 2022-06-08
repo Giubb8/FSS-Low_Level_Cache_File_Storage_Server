@@ -7,8 +7,9 @@ void handle_p();
 void handle_h();
 void handle_f();
 void handle_t();
-
-
+void handle_D();
+void handle_d();
+void handle_r();
 /* ################### MAIN ################################## */
 
 
@@ -36,6 +37,18 @@ int main(int argc, char *argv[]){
             handle_h();
             exit(EXIT_SUCCESS);
         }
+        if(strcmp(argv[i],"-w") == 0){
+            w_flag=1;
+        }
+        if(strcmp(argv[i],"-W") == 0){
+            w_flag=1;
+        }
+        if(strcmp(argv[i],"-r") == 0){
+            r_flag=1;
+        }
+        if(strcmp(argv[i],"-R") == 0){
+            r_flag=1;
+        }
     }
 
     /*Gestione Input Argv*/
@@ -48,7 +61,7 @@ int main(int argc, char *argv[]){
                     exit(EXIT_FAILURE);
                 }
                 else{
-                    if(strlen(optarg)<MAXSOCKETNAME){//se nome va bene
+                    if(strlen(optarg)<MAXNAME){//se nome va bene
                         f_flag=1;
                         strncpy(socketname,optarg,sizeof(optarg));
                         if(p_flag)printf("nome socket ricevuto correttamente %s\n",socketname);
@@ -65,6 +78,12 @@ int main(int argc, char *argv[]){
                 
             case 't':
                 handle_t(optarg);
+            case 'D':
+                handle_D(optarg);
+            case 'd':
+                handle_d(optarg);
+            case 'r':
+                handle_r(optarg);
             default:
                 break;
             }
@@ -132,3 +151,101 @@ void handle_x(char * sock){
 }
 
 
+/*funzione che specifica dove vengono messi i file che provocano overload*/
+void handle_D(char * dirpath){
+   
+    /*controllo flag w*/
+    if(w_flag==0){
+        perror("argomento D usato senza w o W\n");
+        exit(EXIT_FAILURE);
+    }
+
+    /*se la cartella esiste copio*/
+    DIR* dir = opendir(dirpath);
+    if(dir){
+        if(strlen(dirpath)<MAXNAME){//controllo lunghezza
+            strcpy(overload_dir_name,dirpath);
+            if(p_flag)printf("nome directory overload ricevuto\n");
+        }
+        else{
+            perror("nome troppo lungo");
+        }
+        closedir(dir);//chiudo la directory
+    }
+    else if(ENOENT==errno){/* directory non esiste*/
+        
+        int error=mkdir(dirpath, 0777);//TODO CONTROLLARE SE MASK OK
+        if(error==0){
+            if(strlen(dirpath)<MAXNAME){
+                strcpy(overload_dir_name,dirpath);
+                if(p_flag)printf("directory creata e nome directory overload ricevuto\n");
+            }
+            else{
+                perror("nome troppo lungo");
+            }
+        }
+        else{
+            perror("errore creazione directory\n");
+        } 
+    }
+    else{
+        perror("errore durante handle_D");
+        exit(EXIT_FAILURE);
+    } 
+}
+
+
+/*cartella dove inserire i file letti dal server*/
+void handle_d(char * dirpath){
+   
+    /*controllo flag w*/
+    if(r_flag==0){
+        perror("argomento D usato senza r o R\n");
+        exit(EXIT_FAILURE);
+    }
+
+    /*se la cartella esiste copio*/
+    DIR* dir = opendir(dirpath);
+    if(dir){
+        if(strlen(dirpath)<MAXNAME){//controllo lunghezza
+            strcpy(overload_dir_name,dirpath);
+            if(p_flag)printf("nome directory overload ricevuto\n");
+        }
+        else{
+            perror("nome troppo lungo");
+        }
+        closedir(dir);//chiudo la directory
+    }
+    else if(ENOENT==errno){/* directory non esiste*/
+        
+        int error=mkdir(dirpath, 0777);//TODO CONTROLLARE SE MASK OK
+        if(error==0){
+            if(strlen(dirpath)<MAXNAME){
+                strcpy(overload_dir_name,dirpath);
+                if(p_flag)printf("directory creata e nome directory overload ricevuto\n");
+            }
+            else{
+                perror("nome troppo lungo");
+            }
+        }
+        else{
+            perror("errore creazione directory\n");
+        } 
+    }
+    else{
+        perror("errore durante handle_d");
+        exit(EXIT_FAILURE);
+    } 
+}
+
+/*Invia un messaggio al server per leggere i file passati come argomento*/
+void handle_r(char * filesnames){
+    
+    char* token = strtok(filesnames, ",");
+    while (token != NULL) {
+        printf(" dentro r %s\n", token);
+        token = strtok(NULL, ",");
+        //openfile
+        //readfile
+    }
+}

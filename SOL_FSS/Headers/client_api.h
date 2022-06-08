@@ -4,6 +4,17 @@
 #include<stdlib.h>
 #include "../Headers/util.h"
 
+/*Struct*/
+
+//struct per rappresentare il messaggio da inviare al server 
+typedef struct to_send{
+    char filepath[MAXPATH];
+    char directory[MAXNAME];
+    int o_lock;
+    int o_create;
+}to_send;
+
+
 /**
  * Apre una connessione verso il server tramite la socket indicata.
  *
@@ -20,8 +31,9 @@ int openConnection(const char* sockname, int msec, const struct timespec abstime
         return -1;
     }
     else{//se connessione puo avvenire
+
         /*preparo le variabili per la connessione*/
-        strncpy(sa.sun_path,sockname,SOCKETPATHMAX);
+        strncpy(sa.sun_path,sockname,MAXPATH);
         sa.sun_family=AF_UNIX;
         fd_socket=socket(AF_UNIX,SOCK_STREAM,0);
         int isconnected=NOTCONNECTED;
@@ -38,6 +50,8 @@ int openConnection(const char* sockname, int msec, const struct timespec abstime
             }
             else return -1;
         }
+
+        
         if(isconnected==0){
             if(p_flag)printf("%sconnessione con %d effettuata\n",separator,fd_socket);
             conn_set=1;
@@ -65,14 +79,45 @@ int closeConnection(const char* sockname){
         return 0;
     }
 }
-
 /**
  * Apre il file sul server
  * pathname - file da aprire
  * flags - modalità di apertura
  * 0 se OK, -1 in caso di errore, setta errno opportunamente
  */
-int openFile(const char* pathname, int flags);
+int openFile(const char* pathname, int flags){
+    if(conn_set==1){
+        if(flags==O_LOCK || flags== O_CREATE || flags==O_BOTH){
+            int operation=OPEN;
+            int pathlen=strlen(pathname);
+            if( (writen(fd_socket,&operation,sizeof(int)))<= 0){
+                perror("writen non riuscita OPEN");
+                exit(EXIT_FAILURE);
+            }
+            if( (writen(fd_socket,&flags,sizeof(int)))<= 0){
+                perror("writen non riuscita OPEN");
+                exit(EXIT_FAILURE);
+            }
+            if( (writen(fd_socket,&pathlen,sizeof(int)))<= 0){
+                perror("writen non riuscita OPEN");
+                exit(EXIT_FAILURE);
+            }
+            if( (writen(fd_socket,pathname,pathlen))<= 0){
+                perror("writen non riuscita OPEN");
+                exit(EXIT_FAILURE);
+            }
+        }
+        else{
+            perror("flag non riconosciuto");
+            exit(EXIT_FAILURE);
+        }
+    }
+    else{
+        perror("connessione non aperta con nessun server");
+        exit(EXIT_FAILURE);
+    }
+    
+}
 
 /**
  * Legge il contenuto del file dal server

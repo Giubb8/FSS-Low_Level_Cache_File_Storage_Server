@@ -1,5 +1,32 @@
-#include"../Headers/util.h"
+#include"../Headers/server_util.h"
 #include<pthread.h>
+
+void* handle_conn(void * fd_conn);
+void spawnthread(int fd_conn);
+int main(int argc,char *argv[]){
+    
+    /*setting configurazione iniziale file config*/
+    initconfig(argc,CONFIG_PATH);
+
+    /*Inizializzazione Socket*/
+    int fd_socket,fd_conn;
+    struct sockaddr_un sa;
+    strcpy(socketname,argv[1]);//TODO in teoria prende il nome della socket dal file config.txt non da qua,ridondante con la funzione di sopra cambiare
+    strcpy(sa.sun_path,socketname);
+    sa.sun_family=AF_UNIX;
+
+    fd_socket=socket(AF_UNIX,SOCK_STREAM,0);
+    bind(fd_socket,(struct sockaddr *)&sa,sizeof(sa));
+    listen(fd_socket,SOMAXCONN);
+
+    while(TRUE){
+        fd_conn=accept(fd_socket,NULL,0);    
+        printf("connessione accettata con fd:%d\n",fd_conn);
+        spawnthread(fd_conn);     
+    }
+    return 0;
+}
+
 
 
 void* handle_conn(void * fd_conn){
@@ -18,6 +45,7 @@ void* handle_conn(void * fd_conn){
     }while(err>0);
     pthread_exit(1);   
 }
+
 void spawnthread(int fd_conn){
     pthread_t tid;
     int err;
@@ -28,25 +56,4 @@ void spawnthread(int fd_conn){
         perror("detaching");
     }
     return;
-}
-
-int main(int argc,char const *argv[]){
-
-    /*Inizializzazione Socket*/
-    int fd_socket,fd_conn;
-    struct sockaddr_un sa;
-    strcpy(socketname,argv[1]);
-    strcpy(sa.sun_path,socketname);
-    sa.sun_family=AF_UNIX;
-
-    fd_socket=socket(AF_UNIX,SOCK_STREAM,0);
-    bind(fd_socket,(struct sockaddr *)&sa,sizeof(sa));
-    listen(fd_socket,SOMAXCONN);
-
-    while(TRUE){
-        fd_conn=accept(fd_socket,NULL,0);    
-        printf("connessione accettata con fd:%d\n",fd_conn);
-        spawnthread(fd_conn);     
-    }
-    return 0;
 }
