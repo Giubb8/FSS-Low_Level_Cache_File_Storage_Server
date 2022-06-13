@@ -1,4 +1,5 @@
-//#include"../Headers/util.h"
+#include"../Headers/client_util.h"
+#include"../Headers/client_globals.h"
 #include"../Headers/client_api.h"
 
 /* ################### HANDLER FUNCTIONS #################### */
@@ -10,6 +11,9 @@ void handle_t();
 void handle_D();
 void handle_d();
 void handle_r();
+void handle_x();
+
+
 /* ################### MAIN ################################## */
 
 
@@ -18,6 +22,8 @@ int main(int argc, char *argv[]){
             perror("input insufficienti");
             exit(EXIT_FAILURE);
         }
+
+    
 
     /*Variabili Interne Client*/
     struct timespec timer;
@@ -208,7 +214,7 @@ void handle_d(char * dirpath){
     DIR* dir = opendir(dirpath);
     if(dir){
         if(strlen(dirpath)<MAXNAME){//controllo lunghezza
-            strcpy(overload_dir_name,dirpath);
+            strcpy(overload_dir_name,dirpath);//copio il nome della cartella scelta nella variabile per contenerla
             if(p_flag)printf("nome directory overload ricevuto\n");
         }
         else{

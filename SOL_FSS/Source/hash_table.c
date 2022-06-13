@@ -16,7 +16,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include <hash_table.h>
+#include"../Headers/hash_table.h"
 
 #include <limits.h>
 

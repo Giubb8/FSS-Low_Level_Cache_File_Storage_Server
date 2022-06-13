@@ -1,6 +1,24 @@
+#pragma once
 #include<pthread.h>
+#include"hash_table.h"
+#include"conc_queue.h"
+
+
+
+
+
+
 
 /*################## Structs ###################*/
+
+
+
+/* lock con variabile condizione associata */
+typedef struct mylock{
+    pthread_mutex_t mutex; //lock
+    pthread_cond_t condition; //variabile condizione
+}mylock;
+
 typedef struct filestats{
     int num_read;
     int num_write;
@@ -17,11 +35,6 @@ typedef struct filestats{
     int max_client;
 }filestats;
 
-/* lock con variabile condizione associata */
-typedef struct mylock{
-    pthread_mutex_t mutex; //lock
-    pthread_cond_t condition; //variabile condizione
-}mylock;
 
 
 /*struttura del file */
@@ -34,31 +47,17 @@ typedef struct myfile{
 }myfile;
 
 
-/* elemento della tabella hash */
-typedef struct hash_element {
-    void* key;
-    void *data; //puntatore al file
-    struct hash_element* next;
-} hash_element;
-
-
-/* tabella hash */
-typedef struct hash_t {
-    int dimension;
-    hash_element ** h_element;
-    /*unsigned int (*hash_function)(void*);
-    int (*hash_key_compare)(void*, void*);*/
-}hash_t;
-
-
 /*cache */
 typedef struct cache{
-    hash_t * hashtable; //tabella hash associata alla cache 
-    int max_conn;       //numero massimo di connessioni che puo gestire la cache 
-    int max_mem;        //massima memoria occupabile
-    int max_files;      
-    int occupied_memory;
-    mylock cache_mutex;//TODO forse * ?
+    icl_hash_t * files_hash_table;  //tabella hash associata alla cache 
+    int max_conn;                   //numero massimo di connessioni che puo gestire la cache 
+    int max_mem;                    //massima memoria occupabile
+    int max_files;                  //numero massimo di file
+    int occupied_memory;            //memoria attualmente occupata in cache
+    pthread_mutex_t cache_mutex; //TODO forse * ?
+    conc_queue * filenamequeue;     //lista dei nomi dei file nella cache,per farla fifo 
     
 }cache;
 
+/*#####################  Funzioni  ####################*/
+cache * create_cache();
