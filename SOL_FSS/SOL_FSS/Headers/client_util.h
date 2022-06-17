@@ -23,7 +23,7 @@
 #define O_LOCK 125 //flag o_lock
 #define O_CREATE 126 //flag o_create
 #define O_BOTH 127 //flag per selezionare entrambi i flag
-
+#define NO_FLAG 128 //flag nullo
 
 /*Funzioni Supporto*/
 /* msleep(): Sleep for the requested number of milliseconds. */

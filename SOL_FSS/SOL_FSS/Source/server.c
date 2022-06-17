@@ -1,6 +1,6 @@
-#include"../Headers/server_util.h"
 #include"../Headers/server_globals.h"
 #include"../Headers/comm.h"
+#include"../Headers/server_util.h"
 #include"../Headers/hash_table.h"
 #include"../Headers/conc_queue.h"
 
@@ -11,13 +11,14 @@ struct sockaddr_un{
     sa_family_t sun_family;
     char sun_path[SOCKETPATHMAX];
 };
-
+    
 /*####################  GLOBALS DEL MAIN  #########################*/
 filestats stats; //struttura per contenere i dati da inserire nel file di log
 struct sockaddr_un sa; //socket
 
 
 int main(int argc,char *argv[]){
+    initconfig(argc,CONFIG_PATH);
 
     /*Dichiarazioni variabili e strutture*/
     int error;
@@ -25,7 +26,6 @@ int main(int argc,char *argv[]){
     mycache=create_cache();  
 
     /* Setting configurazione iniziale file config*/
-    initconfig(argc,CONFIG_PATH);
 
     /* Gestione dei Segnali */
     signal_handling();

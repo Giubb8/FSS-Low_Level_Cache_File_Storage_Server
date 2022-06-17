@@ -39,6 +39,12 @@ enum opcode_{
     UNLOCK = 9,
     
 };
+/* codici per gli errori */
+enum errors_{
+    ERROR = -1,
+    FATAL_ERROR = -2,
+    SUCCESS =0
+};
 
 struct sockaddr_un sa;//struct per il soclet address
 
@@ -114,11 +120,15 @@ int closeConnection(const char* sockname){
  * flags - modalità di apertura
  * 0 se OK, -1 in caso di errore, setta errno opportunamente
  */
-int openFile(char* pathname, int flags){
+int openFile(char * pathname, int flags){
     if(conn_set==1){
-        if(flags==O_LOCK || flags== O_CREATE || flags==O_BOTH){
+        int reply=-20;
+        if(flags==O_LOCK || flags== O_CREATE || flags==O_BOTH || flags==NO_FLAG){
+            
             int operation=OPEN;
             int pathlen=strlen(pathname);
+            pathlen++;
+            fflush(stdout);
             if( (writen(fd_socket,&operation,sizeof(int)))<= 0){
                 perror("writen non riuscita OPEN");
                 exit(EXIT_FAILURE);
@@ -140,6 +150,19 @@ int openFile(char* pathname, int flags){
             perror("flag non riconosciuto");
             exit(EXIT_FAILURE);
         }
+
+        if( (readn(fd_socket,&reply,sizeof(reply)))<= 0){
+                perror("readn non riuscita OPEN");
+                exit(EXIT_FAILURE);
+        }
+        if(reply==SUCCESS){
+            if(p_flag)printf("%s file %s  aperto con successo %s\n",separator,pathname,separator);
+        }
+        else{
+            if(p_flag)printf("%s file %s non aperto,fallito %s\n",separator,pathname,separator);
+        }
+
+
     }
     else{
         perror("connessione non aperta con nessun server");

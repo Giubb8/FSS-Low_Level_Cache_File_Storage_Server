@@ -4,6 +4,7 @@
 
 /* ################### HANDLER FUNCTIONS #################### */
 
+void handle_o();
 void handle_p();
 void handle_h();
 void handle_f();
@@ -59,7 +60,7 @@ int main(int argc, char *argv[]){
 
     /*Gestione Input Argv*/
     int opt;
-    while( (x_flag==0) && ((opt=getopt(argc,argv,":f:w:W:D:r:R:d:t:l:u:c:px"))!=-1) ){
+    while( (x_flag==0) && ((opt=getopt(argc,argv,":f:w:W:D:r:R:d:t:l:u:o:c:px"))!=-1) ){
         switch(opt){
             case 'f':
                 if(f_flag==1){
@@ -90,6 +91,8 @@ int main(int argc, char *argv[]){
                 handle_d(optarg);
             case 'r':
                 handle_r(optarg);
+            case 'o':
+                handle_o(optarg);
             default:
                 break;
             }
@@ -97,6 +100,26 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
+void handle_o(char * args){
+    int flag;
+    char* token = strtok(args, ",");
+    char * filename=token; 
+    token = strtok(NULL, ",");
+    if(strcmp(token,"O_LOCK")==0){
+        flag=O_LOCK;
+    }
+    if(strcmp(token,"O_CREATE")==0){
+        flag=O_CREATE;
+    }
+    if(strcmp(token,"O_BOTH")==0){
+        flag=O_BOTH;
+    }
+    if(strcmp(token,"NO_FLAG")==0){
+        flag=NO_FLAG;
+    }
+    openFile(filename,flag);
+
+}
 
 /*abilita le stampe per ogni operazione*/
 void handle_p(){
@@ -249,9 +272,9 @@ void handle_r(char * filesnames){
     
     char* token = strtok(filesnames, ",");
     while (token != NULL) {
-        printf(" dentro r %s\n", token);
+        printf("dentro r %s\n", token);
+        openFile(token,O_CREATE);
         token = strtok(NULL, ",");
-        //openfile
         //readfile
     }
 }

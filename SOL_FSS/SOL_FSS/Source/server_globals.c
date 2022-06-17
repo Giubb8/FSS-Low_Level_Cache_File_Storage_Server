@@ -1,6 +1,6 @@
 #include<stdio.h>
-#include "../Headers/cache.h"
 #include "../Headers/server_globals.h"
+#include "../Headers/cache.h"
 
 char socketname[MAXSOCKETNAME]; //nome della socket 
 int num_workers=0; //numero di thread worker
@@ -15,6 +15,8 @@ FILE * filelog; //file descriptor del file di log
 char * logstring; //stringa da passare al file di log
 int sighintquit=0; //flag per segnalare il segnale sigint o sigquit
 int sighup=0; //flag per segnalare il segnale sighup
-pthread_mutex_t mutexqueue; //mutexlock sulla coda di fd dei clients 
-pthread_cond_t condvqueue; //condition variables sulla coda di fd dei clients
+pthread_mutex_t mutex_clients_queue; //mutexlock sulla coda di fd dei clients 
+pthread_cond_t condv_clients_queue; //condition variables sulla coda di fd dei clients
 cache * mycache=NULL; //cache del server
+int comm_flag=0;
+

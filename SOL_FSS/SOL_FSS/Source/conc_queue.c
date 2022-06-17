@@ -1,5 +1,6 @@
 #include "../Headers/conc_queue.h"
 #include<stdio.h>
+#include<stdint.h>
 #define SUCCESS 5
 #define ERR -1
 #define TRUE 1
@@ -156,7 +157,7 @@ void queue_print(conc_queue * queue){
     conc_node aux=queue->head;
     while(aux->next!=NULL){        
         aux=aux->next;
-        printf("%d->",(int)aux->data);
+        printf("%d->",(int)(uintptr_t)aux->data);
     }
     printf("\n");
 }
