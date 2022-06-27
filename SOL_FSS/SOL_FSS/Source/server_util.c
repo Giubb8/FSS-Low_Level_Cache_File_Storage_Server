@@ -108,3 +108,65 @@ int writen(long fd, void *buf, size_t size) {
     }
     return 1;
 }
+
+void print_op(int opcode){
+    static int n_op=1;
+    printf("%d ",n_op);
+    switch (opcode){
+    case 0:
+        printf("TURNOFF\n");
+        break;
+    case 1:
+        printf("OPEN\n");
+        break;
+    case 2:
+        printf("READ\n");
+        break;
+    case 3:
+        printf("READN\n");
+        break;
+    case 4:
+        printf("WRITE\n");
+        break;
+    case 5:
+        printf("REMOVE\n");
+        break;
+    case 6:
+        printf("CLOSE\n");
+        break;
+    case 7:
+        printf("APPEND\n");
+        break;
+    case 8:
+        printf("LOCK\n");
+        break;
+    case 9:
+        printf("UNLOCK\n");
+        break;
+    default:
+        break;
+    }
+    n_op++;
+    
+    return;
+    
+}
+void print_flag(int flag){
+    switch (flag){
+    case O_BOTH:
+        printf("FLAG OBOTH\n");
+        break;
+    case NO_FLAG:
+        printf("FLAG NOFLAG\n");
+        break;
+    case O_CREATE:
+        printf("FLAG OCREATE\n");
+        break;
+    case O_LOCK:
+        printf("FLAG OLOCK\n");
+        break;
+
+    default:
+        break;
+    }
+}

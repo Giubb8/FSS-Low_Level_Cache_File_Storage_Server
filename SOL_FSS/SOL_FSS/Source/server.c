@@ -1,8 +1,8 @@
 #include"../Headers/server_globals.h"
 #include"../Headers/comm.h"
 #include"../Headers/server_util.h"
-#include"../Headers/hash_table.h"
-#include"../Headers/conc_queue.h"
+#include"../Headers/DataStructures/hash_table.h"
+#include"../Headers/DataStructures/conc_queue.h"
 
 #include<pthread.h>
 

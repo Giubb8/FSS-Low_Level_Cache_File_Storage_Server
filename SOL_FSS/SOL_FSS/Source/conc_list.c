@@ -1,4 +1,5 @@
-#include "../Headers/conc_list.h"
+#include "../Headers/DataStructures/conc_list.h"
+#include <stdio.h>
 #define ERR -1
 #define SUCCESS 0
 #define TRUE 1
@@ -19,7 +20,7 @@ llist* ll_create() {
 int ll_insert_head(llist** list, void* data, int(*cmp_fnc)(const void*, const void*)) {
     if(!list || !(*list)) {errno=EINVAL; return ERR;}     // Uninitialized list
     if(!data) {errno=EINVAL; return ERR;}   // invalid data
-
+    
     if(ll_search((*list), data, cmp_fnc)) {
         if(data) free(data);
         return SUCCESS;
@@ -74,9 +75,21 @@ int ll_remove(llist** list, void* data, int(*cmp_fnc)(const void*, const void*))
 int ll_search(llist* list, void* data, int(*cmp_fnc)(const void*, const void*)) {
     if(!list) {errno=EINVAL; return ERR;}     // Uninitialized list
     if(!data) {errno=EINVAL; return ERR;}   // invalid data
-
+    
+    printf("BEFORE\n");
+    
+    if(list->head==NULL){
+        printf("listhead  null\n");
+        return FALSE;
+    }
+    if(list->head->data!=NULL){
+    }
+   
+    printf("POST\n");
+    fflush(stdout);
     conc_node aux1;
     for(aux1=list->head; aux1!=NULL && (cmp_fnc(aux1->data, data)); aux1=aux1->next);
+        printf("POST2\n");
 
     if(!aux1) return FALSE;
     return TRUE;

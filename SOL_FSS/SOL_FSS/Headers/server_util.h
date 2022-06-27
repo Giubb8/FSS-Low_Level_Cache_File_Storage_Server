@@ -11,7 +11,7 @@
 #include<sys/wait.h>
 #include<sys/socket.h>
 #include"server_globals.h"
-#include"cache.h"
+#include"./DataStructures/cache.h"
 
 
 
@@ -29,7 +29,7 @@
 #define O_BOTH 127 //flag per selezionare entrambi i flag
 #define NO_FLAG 128 //flag nullo
 
-#define CONFIG_PATH "./config.txt"
+#define CONFIG_PATH "../Config_files/config.txt"
 /*################################ PROTOTIPI ############################################*/
 
 void initconfig(int argc,char const * pos);
@@ -38,4 +38,5 @@ void sig_sighup_handler();
 void signal_handling();
 int readn(long fd, void *buf, size_t size);
 int writen(long fd, void *buf, size_t size);
-
+void print_op(int opcode);
+void print_flag(int flag);

@@ -1,4 +1,4 @@
-#include "../Headers/conc_queue.h"
+#include "../Headers/DataStructures/conc_queue.h"
 #include<stdio.h>
 #include<stdint.h>
 #define SUCCESS 5
@@ -62,16 +62,17 @@ int conc_queue_push(conc_queue* queue, void* data) {
 void* conc_queue_pop(conc_queue* queue) {
     if(!queue) {errno=EINVAL; return (void*)NULL;}     // Uninitialized queue
     if(!(queue->head)) {errno=EINVAL; return (void*)NULL;}     // Uninitialized queue
-
     int temperr;
     errno=0;
     temperr=pthread_mutex_lock(&((queue->head)->node_mtx));
+
     if(temperr) {errno=temperr; return (void*)NULL;}
 
     if(!((queue->head)->next)) {
+
         temperr=pthread_mutex_unlock(&((queue->head)->node_mtx));
         if(temperr) {errno=temperr; return (void*)NULL;}
-        
+
         return (void*)NULL;
     }
 
@@ -158,6 +159,20 @@ void queue_print(conc_queue * queue){
     while(aux->next!=NULL){        
         aux=aux->next;
         printf("%d->",(int)(uintptr_t)aux->data);
+    }
+    printf("\n");
+}
+
+
+void queue_print_char(conc_queue * queue){
+    if(queue==NULL){
+        perror("errore queue print");
+        exit(EXIT_FAILURE);
+    }
+    conc_node aux=queue->head;
+    while(aux->next!=NULL){        
+        aux=aux->next;
+        printf("%s->",(char*)aux->data);
     }
     printf("\n");
 }

@@ -89,13 +89,35 @@ int handleop(msg request,int clientfd){
       }
       else if(request.flag==O_LOCK){
           lock=1;
-      }//TODO forse non casi completi
+      }      //TODO forse non casi completi
+
       int ret=OpenCachedFile(mycache,request.filepath,clientfd,create,lock);
+      fflush(stdout);
       if(ret==SUCCESS){
               return SUCCESS;
       }
-      
     }
+    if(request.op==APPEND){
+      int ret=AppendTo(mycache,request.filepath,clientfd,request.content);
+      fflush(stdout);
+      return ret;
+    }
+    if(request.op==CLOSE){
+        int ret=CloseFile(mycache,request.filepath,request.size,clientfd);
+        fflush(stdout);
+        return ret;
+    }
+    if(request.op==LOCK){
+        int ret=LockFile(mycache,request.filepath,clientfd);
+        fflush(stdout);
+        return ret;
+    }
+    if(request.op==LOCK){
+        int ret=UnlockFile(mycache,request.filepath,clientfd);
+        fflush(stdout);
+        return ret;
+    }
+
 }
 
 
@@ -103,17 +125,61 @@ void * handleconnection(void * arg){
     //TODO forse free(arg)?
     int ret;
     int clientfd=(int)(uintptr_t)arg;
-    msg request;
-    while (sighup==0 && sighintquit==0){
+    while (sighup==0 && sighintquit==0){    
+        msg request={0};
+
         readn(clientfd,&(request.op),sizeof(request.op));
-        readn(clientfd,&(request.flag),sizeof(request.flag));
-        readn(clientfd,&(request.size),sizeof(request.size));
-        readn(clientfd,&(request.filepath),request.size);
 
+        if(request.op==OPEN){
+            readn(clientfd,&(request.flag),sizeof(request.flag));
+            readn(clientfd,&(request.size),sizeof(request.size));
+            readn(clientfd,&(request.filepath),request.size);
+            if(p_flag){
+                printf("\n%s",separator);
+                print_op(request.op);
+                print_flag(request.flag);
+                printf("dimensione contenuto: %d\n",request.contentsize);
+                printf("contenuto: %s\n",request.filepath);
+                printf("%s\n",separator);
+            }    
+            ret=handleop(request,clientfd);
+            writen(clientfd,&ret,sizeof(ret));
+        }
+        else if(request.op==APPEND){
+            readn(clientfd,&(request.size),sizeof(request.size));
+            readn(clientfd,&(request.filepath),request.size);
+            readn(clientfd,&(request.contentsize),sizeof(request.contentsize));
+            readn(clientfd,&(request.content),request.contentsize);
+            if(p_flag){
+                printf("\n%s",separator);
+                print_op(request.op);
+                printf("sizepath %d\npath: %s\nsizecontent %d\ncontent: %s\n",request.size,request.filepath,request.contentsize,request.content);
+                printf("%s\n",separator);
+            }   
+            ret=handleop(request,clientfd);
+            writen(clientfd,&ret,sizeof(ret));
+        }
+        else if(request.op==CLOSE){
+            readn(clientfd,&(request.size),sizeof(request.size));
+            readn(clientfd,&(request.filepath),request.size);
+            ret=handleop(request,clientfd);
+            writen(clientfd,&ret,sizeof(ret));
+        }
+        else if(request.op==LOCK){
+            readn(clientfd,&(request.size),sizeof(request.size));
+            readn(clientfd,&(request.filepath),request.size);
+            ret=handleop(request,clientfd);
+            writen(clientfd,&ret,sizeof(ret));
 
-        if(p_flag)printf("ricevuta operazione %d\nflag %d\ndimensione %d\ncontenuto %s\n",request.op,request.flag,request.size,request.filepath);
-        ret=handleop(request,clientfd);
-        writen(clientfd,&ret,sizeof(ret));//TODO VEDERE COME VA OPERAZIONE E SCRIVERE RISULTATO AL CLIENT CHE HA EFFETTUATO RICHIESTA
+        }
+        else if(request.op==UNLOCK){
+            readn(clientfd,&(request.size),sizeof(request.size));
+            readn(clientfd,&(request.filepath),request.size);
+            ret=handleop(request,clientfd);
+            writen(clientfd,&ret,sizeof(ret));
+        }
+        
+        //TODO VEDERE COME VA OPERAZIONE E SCRIVERE RISULTATO AL CLIENT CHE HA EFFETTUATO RICHIESTA
     }
    return 0;
 }

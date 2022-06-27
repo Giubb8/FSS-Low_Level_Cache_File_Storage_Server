@@ -1,12 +1,12 @@
 #include<stdio.h>
 #include "../Headers/server_globals.h"
-#include "../Headers/cache.h"
+#include "../Headers/DataStructures/cache.h"
 
 char socketname[MAXSOCKETNAME]; //nome della socket 
 int num_workers=0; //numero di thread worker
 int memory_dimension=0; //dimensione della memoria associata alla cache
 int num_max_file=0;//numero massimo di file memorizzabili
-int wait_time=0;//tempo di attesa tra richieste successive,associato a -t
+int wait_time=200;//tempo di attesa tra richieste successive,associato a -t
 int fd_socket=-1;//file descriptor della socket
 int fd_conn=-1;//file descriptor della connessione 
 char * separator="~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";

@@ -9,9 +9,12 @@ int p_flag=0;//flag per abilitare le stampe per le operazioni
 int x_flag=0;//flag per uscita dal programma
 int w_flag=0;//flag per scrittura serve per -D
 int r_flag=0;//flag per lettura serve per -d
+int D_flag=0;//flag per vedere se e' stata settata la dirname
+int d_flag=0;//flag per vedere se e' stata settata la dirname per lettura
 char socketname[MAXNAME]; //nome della socket
 char overload_dir_name[MAXNAME];//nome della directory dove vengono messi i file che provocano overload
 int conn_set=0;//flag per vedere se la connessione con il server è attiva 
 int wait_time=0;//tempo di attesa tra richieste successive,associato a -t
 int fd_socket=-1;//file descriptor della socket
 char * separator="~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+char * opseparator="-------------------------------------------------------------------------------------------\n";

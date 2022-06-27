@@ -6,10 +6,11 @@
 #include<sys/socket.h>
 #include "../Headers/server_globals.h"
 #include "../Headers/server_util.h"
-#include "../Headers/conc_queue.h"
-#include "../Headers/cache.h"
+#include "../Headers/DataStructures/conc_queue.h"
+#include "../Headers/DataStructures/cache.h"
 
 #define MAXPATH 100 //lunghezza del path massimo per raggiungere la socket
+#define MAXCONTENT 2028 //lunghezza massima del file
 
 typedef struct message{
   int op;
@@ -17,6 +18,8 @@ typedef struct message{
   int more;
   int size;
   char filepath[MAXPATH];
+  char  content[MAXCONTENT];
+  int contentsize;
 }msg;
 
 void * dispatcher(void * arg);

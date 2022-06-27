@@ -26,6 +26,7 @@
 #define NO_FLAG 128 //flag nullo
 
 /*Funzioni Supporto*/
+
 /* msleep(): Sleep for the requested number of milliseconds. */
 static int msleep(long msec){
     struct timespec ts;
@@ -79,3 +80,59 @@ static  int writen(long fd, void *buf, size_t size) {
     }
     return 1;
 }
+
+/* Legge il contenuto di un file */
+static int readFileContent(char* pathname, void** buf, size_t* size){
+    if(!pathname || !buf || !size) {
+        fprintf(stderr, "\n1Client: errore lettura contenuto file %s. Info sull'errore: %s\n", pathname,
+                strerror(errno));
+        errno = EINVAL;
+        return -1;
+    }
+    FILE* file;
+    file = fopen(pathname, "rb+");
+    if(!file){
+        fprintf(stderr, "\n2Client: errore lettura contenuto file %s. Info sull'errore: %s\n", pathname,
+                strerror(errno));
+        return -1;
+    }
+    struct stat sb;
+    if (stat(pathname, &sb) == -1){
+        fprintf(stderr, "\n3Client: errore lettura statistiche file %s. Info sull'errore: %s\n", pathname,
+                strerror(errno));
+        return -1;
+    }
+    *size = sb.st_size;
+    if(*size <= 0){
+        errno = ENODATA;
+        fprintf(stderr, "\n4Client: errore lettura contenuto file %s. Info sull'errore: %s\n", pathname,
+                strerror(errno));
+        return -1;
+    }
+
+    *buf = malloc(*size);
+    if(!*buf){
+        perror("\nreadFileContent: Errore allocazione memoria\n");
+        exit(EXIT_FAILURE);
+    }
+    /*while (fread(*buf, 1, *size, file) > 0){
+
+    }*/
+    fread(*buf, 1, *size, file);
+    fclose(file);
+    return 0;
+}
+
+/* Effettua il parsing del nome di un file a partire dal path */
+static inline void parseFilename(char* pathname, char* result){
+    char* filename;
+    char name[MAXNAME];
+    char* rest = NULL;
+    filename = strtok_r(pathname, "/", &rest);
+    while(filename != NULL){
+        strcpy(name, filename);
+        filename = strtok_r(NULL, "/", &rest);
+    }
+    strcpy(result, name);
+}
+
