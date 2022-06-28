@@ -8,8 +8,8 @@ rall: client server socket
 client: client.c client_api.c
 	$(CC) $(CFLAGS)  client.c client_api.c client_globals.c -o client
 
-server: server.c server_globals.c  hash_table.c comm.c  conc_elem.c conc_queue.c cache.c server_util.c
-	$(CC) $(CFLAGS) -pthread server.c cache.c server_util.c server_globals.c  hash_table.c comm.c  conc_elem.c conc_queue.c -o server
+server: server.c server_globals.c conc_list.c hash_table.c comm.c  conc_elem.c conc_queue.c cache.c server_util.c
+	$(CC) $(CFLAGS) -pthread server.c cache.c server_util.c conc_list.c server_globals.c  hash_table.c comm.c  conc_elem.c conc_queue.c -o server
 
 socket: mysocket
 	rm mysocket

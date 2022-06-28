@@ -10,9 +10,12 @@ extern int p_flag;//flag per abilitare le stampe per le operazioni
 extern int x_flag;//flag per uscita dal programma
 extern int w_flag;//flag per scrittura serve per -D
 extern int r_flag;//flag per lettura serve per -d
+extern int D_flag;//flag per la dirname in scrittura
+extern int d_flag;//flag per la dirname in lettura
 extern char socketname[MAXNAME]; //nome della socket
 extern char overload_dir_name[MAXNAME];//nome della directory dove vengono messi i file che provocano overload
 extern int conn_set;//flag per vedere se la connessione con il server è attiva 
 extern int wait_time;//tempo di attesa tra richieste successive,associato a -t
 extern int fd_socket;//file descriptor della socket
 extern char * separator;
+extern char * opseparator;

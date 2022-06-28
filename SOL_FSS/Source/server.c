@@ -1,8 +1,8 @@
 #include"../Headers/server_globals.h"
 #include"../Headers/comm.h"
 #include"../Headers/server_util.h"
-#include"../Headers/hash_table.h"
-#include"../Headers/conc_queue.h"
+#include"../Headers/DataStructures/hash_table.h"
+#include"../Headers/DataStructures/conc_queue.h"
 
 #include<pthread.h>
 
@@ -18,6 +18,7 @@ struct sockaddr_un sa; //socket
 
 
 int main(int argc,char *argv[]){
+    initconfig(argc,CONFIG_PATH);
 
     /*Dichiarazioni variabili e strutture*/
     int error;
@@ -25,7 +26,6 @@ int main(int argc,char *argv[]){
     mycache=create_cache();  
 
     /* Setting configurazione iniziale file config*/
-    initconfig(argc,CONFIG_PATH);
 
     /* Gestione dei Segnali */
     signal_handling();

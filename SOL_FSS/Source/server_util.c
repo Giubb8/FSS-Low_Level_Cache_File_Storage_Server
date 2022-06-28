@@ -1,4 +1,3 @@
-
 #include"../Headers/server_util.h"
 
 
@@ -75,3 +74,99 @@ void signal_handling(){
 }
 
 
+/*  read per evitare scritture parziali */
+int readn(long fd, void *buf, size_t size) {
+    size_t left = size;
+    int r;
+    char *bufptr = (char*)buf;
+    while(left>0) {
+	if ((r=read((int)fd ,bufptr,left)) == -1) {
+	    if (errno == EINTR) continue;
+	    return -1;
+	}
+	if (r == 0) return 0;   // EOF
+        left    -= r;
+	bufptr  += r;
+    }
+    return size;
+}
+
+
+/*  writen per evitare scritture parziali 3e parti*/ 
+int writen(long fd, void *buf, size_t size) {
+    size_t left = size;
+    int r;
+    char *bufptr = (char*)buf;
+    while(left>0) {
+	if ((r=write((int)fd ,bufptr,left)) == -1) {
+	    if (errno == EINTR) continue;
+	    return -1;
+	}
+	if (r == 0) return 0;  
+        left    -= r;
+	bufptr  += r;
+    }
+    return 1;
+}
+
+void print_op(int opcode){
+    static int n_op=1;
+    printf("%d ",n_op);
+    switch (opcode){
+    case 0:
+        printf("TURNOFF\n");
+        break;
+    case 1:
+        printf("OPEN\n");
+        break;
+    case 2:
+        printf("READ\n");
+        break;
+    case 3:
+        printf("READN\n");
+        break;
+    case 4:
+        printf("WRITE\n");
+        break;
+    case 5:
+        printf("REMOVE\n");
+        break;
+    case 6:
+        printf("CLOSE\n");
+        break;
+    case 7:
+        printf("APPEND\n");
+        break;
+    case 8:
+        printf("LOCK\n");
+        break;
+    case 9:
+        printf("UNLOCK\n");
+        break;
+    default:
+        break;
+    }
+    n_op++;
+    
+    return;
+    
+}
+void print_flag(int flag){
+    switch (flag){
+    case O_BOTH:
+        printf("FLAG OBOTH\n");
+        break;
+    case NO_FLAG:
+        printf("FLAG NOFLAG\n");
+        break;
+    case O_CREATE:
+        printf("FLAG OCREATE\n");
+        break;
+    case O_LOCK:
+        printf("FLAG OLOCK\n");
+        break;
+
+    default:
+        break;
+    }
+}

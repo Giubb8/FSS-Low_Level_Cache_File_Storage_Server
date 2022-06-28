@@ -16,7 +16,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include"../Headers/hash_table.h"
+#include"../Headers/DataStructures/hash_table.h"
 
 #include <limits.h>
 
@@ -109,7 +109,8 @@ icl_hash_find(icl_hash_t *ht, void* key)
 
     if(!ht || !key) return NULL;
 
-    hash_val = (* ht->hash_function)(key) % ht->nbuckets;
+    hash_val = (* ht->hash_function)((char*)key);
+    hash_val=(hash_val)%(ht->nbuckets);
 
     for (curr=ht->buckets[hash_val]; curr != NULL; curr=curr->next)
         if ( ht->hash_key_compare(curr->key, key))
