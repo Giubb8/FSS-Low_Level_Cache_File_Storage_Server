@@ -1,6 +1,8 @@
 #include"../Headers/client_util.h"
 #include"../Headers/client_globals.h"
 #include"../Headers/client_api.h"
+#include <stdio_ext.h>
+
 
 #define ERROR -1
 #define SUCCESS 0
@@ -18,7 +20,49 @@ void handle_x();
 void handle_W();
 void handle_l();
 void handle_u();
+void handle_R();
+void handle_w();
+void handle_c();
 int readFile_and_Store();
+int isDir();
+
+
+// Wrapper function of the read SysCall handling the interrupted-reading problem
+int readn(int source, void* buf, int toread){
+  int bleft;     // Bytes left to read
+  int bread;     // Bytes read until now
+  bleft=toread;     // Before the start of the stream, nothing has been read
+  while(bleft>0) {
+    if((bread=read(source, buf, bleft)) < 0) {     // If an error verified
+      if(bleft==toread) return -1;     // If nothing has been read, return the error state
+      else break;     // If the error happened during the stream of data, return the number of bytes read
+    }
+    else if(bread==0) break;  // read operation completed
+    bleft-=bread;   // Updates the number of bytes left (subtracting those just read)
+    buf=(char*)buf+bread;   // Updates the current position of buffer pointer
+  }
+  return (toread-bleft);    // Returns the total number of bytes read
+}
+
+// Wrapper function of the write SysCall handling the interrupted-writing problem
+int writen(int source, void* buf, int towrite) {
+  int bleft;    // Bytes left to write
+  int bwritten;   // Bytes written until now
+  bleft=towrite;   // Before the start of the stream, nothing has been written
+  while(bleft>0) {
+    if((bwritten=write(source, buf, bleft)) < 0) {    // If an interruption verified
+      if(bleft==towrite) return -1;    // If nothing has been written, return the error state
+      else break;   // If the interruption happened during the stream of data, return the number of bytes written
+    }
+    else if (bwritten==0) break;  // write operation completed
+    bleft-=bwritten;    // Updates the number of bytes left (subtracting those just written)
+    buf=(char*)buf+bwritten;    // Updates the current position of buffer pointer
+  }
+  return (towrite-bleft);   // Returns the total number of bytes written
+}
+
+
+
 /* ################### MAIN ################################## */
 
 
@@ -116,10 +160,20 @@ int main(int argc, char *argv[]){
             case 'u':
                 handle_u(optarg);
                 break;
+            case 'R':
+                handle_R(optarg);
+                break;
+            case 'w':
+                handle_w(optarg);
+                break;
+            case 'c':
+                handle_c(optarg);
+                break;
             default:
                 break;
             }
     }
+    handle_x(socketname);
     return 0;
 }
 
@@ -130,24 +184,14 @@ void handle_W(char * filesnames){
         if ( openFile(token,O_BOTH) != 0 ){
             // per fare la append
             if (openFile(token,NO_FLAG) == 0){
-                void* buf;
-                size_t size;
-                if (readFileContent(token, &buf, &size) == 0){
-                    appendToFile(token, buf, size, overload_dir_name);
-                    free(buf);
-                }
+                writeFile(token,overload_dir_name);
                 closeFile(token);
             }else{
                 printf("\nErrore nell'apertura del file %s\n", token);//TODO gestire errori
             }
         }else{
             printf("Ramo else\n");
-            void* buf;
-            size_t size;
-            if (readFileContent(token, &buf, &size) == 0){
-                appendToFile(token, buf, size, overload_dir_name);
-                free(buf);
-            }
+            writeFile(token,overload_dir_name);
             closeFile(token);
         }        
         token = strtok(NULL, ",");
@@ -261,7 +305,7 @@ void handle_D(char * dirpath){
     }
     else if(ENOENT==errno){/* directory non esiste*/
         
-        int error=mkdir(dirpath, 0777);//TODO CONTROLLARE SE MASK OK
+        int error=mkdir(dirpath, 0777);
         if(error==0){
             if(strlen(dirpath)<MAXNAME){
                 strcpy(overload_dir_name,dirpath);
@@ -300,8 +344,8 @@ void handle_d(char * dirpath){
     DIR* dir = opendir(dirpath);
     if(dir){
         if(strlen(dirpath)<MAXNAME){//controllo lunghezza
-            strcpy(overload_dir_name,dirpath);//copio il nome della cartella scelta nella variabile per contenerla
-            if(p_flag)printf("nome directory overload: %s\n",overload_dir_name);
+            strcpy(d_overload_dir_name,dirpath);//copio il nome della cartella scelta nella variabile per contenerla
+            if(p_flag)printf("nome directory overload: %s\n",d_overload_dir_name);
         }
         else{
             perror("nome troppo lungo");
@@ -310,10 +354,10 @@ void handle_d(char * dirpath){
     }
     else if(ENOENT==errno){/* directory non esiste*/
         
-        int error=mkdir(dirpath, 0777);//TODO CONTROLLARE SE MASK OK
+        int error=mkdir(dirpath, 0777);
         if(error==0){
             if(strlen(dirpath)<MAXNAME){
-                strcpy(overload_dir_name,dirpath);
+                strcpy(d_overload_dir_name,dirpath);
                 if(p_flag)printf("directory creata e nome directory overload ricevuto\n");
             }
             else{
@@ -334,22 +378,21 @@ void handle_d(char * dirpath){
 
 /*Invia un messaggio al server per leggere i file passati come argomento*/
 void handle_r(char * filesnames){
-    
     char* token = strtok(filesnames, ",");
     while (token != NULL) {
         printf("dentro r %s\n", token);
         openFile(token,O_CREATE);
         if(d_flag){
-            printf("dentro dflag %s\n",overload_dir_name);
             readFile_and_Store(token);
         }
         else{
-            printf("ramo else dflag %s\n",overload_dir_name);
             void * buffer=NULL;
             size_t size;
-            readFile(token,&(buffer),&size);
+            readFile(token,&buffer,&size);
+            fflush(stdout);//TODO IMPORTANTISSIMO FFLUSH NON LEVARE e a quanto pare anche strlen
+            printf("letti %d %d caratteri dal server:\n%s\n",strlen(buffer),(int)size,(char*)buffer);
             fflush(stdout);
-            printf("letto dal server %d %s\n%d\n",strlen((char*)buffer),buffer,size);
+            fflush(stderr);
             free(buffer);
         }
         token = strtok(NULL, ",");
@@ -376,13 +419,86 @@ void handle_u(char * filenames){
     }
 }
 
+void handle_R(char * string_num_files){
+    /* Prendo dalla stringa il numero di files da leggere dal server */     
+    string_num_files=strstr(string_num_files,"=");
+    int n=strtol(string_num_files+1,NULL,10);
+    readNFiles(n,d_overload_dir_name);
+    printf("%s",opseparator);
+}
 
 
+/* Funzione per la visita ricorsiva della cartella Basepath */
+void myfilerecursive(char *basePath,int n){//TODO CAMBIARE DIMENSIONE PATH COERENTEMENTE CON LE DEFINE
+    if(n==0){
+        //printf("sto uscendo\n");
+        return;
+    }
+    char path[1000];
+    struct dirent *dp;
+    DIR *dir = opendir(basePath);
+    int sended=0;
+   
+    if (!dir)
+        return;
+
+    while (((dp = readdir(dir)) != NULL) && sended!=n){
+        if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0){
+   //         printf("%s\n", dp->d_name);
+            strcpy(path, basePath);
+            strcat(path, "/");
+            strcat(path, dp->d_name);
+            if(isDir(path)!=0){
+                if ( openFile(path,O_BOTH) != 0 ){
+                    if (openFile(path,NO_FLAG) == 0){
+                        writeFile(path,overload_dir_name);
+                        closeFile(path);
+                    }else{
+                        printf("\nErrore nell'apertura del file %s\n", path);//TODO gestire errori
+                    }
+                }else{
+                    //printf("Ramo else\n");
+                    writeFile(path,overload_dir_name);
+                    closeFile(path);
+                }        
+            n--;
+            }
+            
+            myfilerecursive(path,n);
+        }
+    }
+
+    closedir(dir);
+}
+
+void handle_w(char * args){
+    int n=-1;
+    if(strstr(args,"=")!=NULL){
+        char * string_num_files=strstr(args,"=");
+        n=strtol(string_num_files+1,NULL,10);
+    }
+    char * token=strtok(args,",");
+    myfilerecursive(token,n); 
+}
+
+void handle_c(char * filesnames){
+
+    char* token = strtok(filesnames, ",");
+    while (token != NULL) {
+        removeFile(token);
+        token = strtok(NULL, ",");
+    }
+    if(p_flag)printf("%s",opseparator);
+}
+
+
+/* Funzione per leggere un file nel caso in cui debba rimpiazzare un file per numero massimo di file raggiunti nella cache  */
 int readFile_and_Store(char * filepath){
-    printf("WE dentro aux\n");
+    printf("Dentro Read and store\n");
+    
     /* Inizializzazione */
-    char * buffer=NULL;
-    size_t size;
+    char * buffer=NULL;//buffer su cui scrivere quanto letto dal server
+    size_t size;//dimensione del contentuto letto dla server
     DIR *dir = NULL; //cartella dove salvare file 
     char storedFile_name[MAXNAME] = ""; //nome del file ricevuto 
     char* storedFile_data = NULL; //contenuto del file ricevuto
@@ -395,22 +511,23 @@ int readFile_and_Store(char * filepath){
     char filename[MAXNAME];
     parseFilename(pathname_to_parse, filename);
 
-    
+    /* Lettura del contenuto dal server */
     readFile(filename,&buffer,&size);
-    
-    /* Scrivo il buffer sulla directory scelta */
-    if(strlen(overload_dir_name)>0){//se la cartella esiste  la apro
-        dir = opendir(overload_dir_name);
+    fflush(stdout);//TODO IMPORTANTISSIMO FFLUSH NON LEVARE e a quanto pare anche strlen
+    printf("letti %d %d caratteri dal server:\n%s\n",strlen(buffer),(int)size,(char*)buffer);
+    /* Apro la Cartella se E */
+    if(strlen(d_overload_dir_name)>0){//se la cartella esiste  la apro
+        dir = opendir(d_overload_dir_name);
         if(!dir) {
             perror("APPEND: Errore apertura directory");
             return -1;
         }
     }
-    if(overload_dir_name != NULL && dir ){
+    if(d_overload_dir_name != NULL && dir ){
         char complete_path[MAXPATH + MAXNAME] = "";
         strcpy(complete_path, overload_dir_name);
         if (complete_path[strlen(complete_path)-1] != '/') strcat(complete_path, "/");
-        strcat(complete_path, storedFile_name);
+        strcat(complete_path, filename);
         printf("complete path %s\n",complete_path);
         /* Creo e scrivo il file ricevuto */
         FILE* storedFile = fopen(complete_path, "wb");
@@ -418,7 +535,7 @@ int readFile_and_Store(char * filepath){
             perror("Errore creando File");
             return ERROR;
         }
-        if (fwrite(buffer, 1, size, storedFile) != storedFile_len){
+        if (fwrite(buffer, 1, size, storedFile) != size){
             perror("scrittura in locale nel file ");
             return ERROR;
         }
@@ -429,10 +546,18 @@ int readFile_and_Store(char * filepath){
         }
         if(dir) closedir(dir);
         if(buffer) free(buffer);
+        fflush(stdout);
         return SUCCESS;
 
 }
 
+
+/* Funzione per Controllare se il file è */
+int isDir(const char* fileName){//TODO spostare su client_util
+    struct stat path;
+    stat(fileName, &path);
+    return S_ISREG(path.st_mode);
+}
 
 
 

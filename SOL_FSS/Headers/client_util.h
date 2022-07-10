@@ -46,8 +46,9 @@ static int msleep(long msec){
 }
 
 
+
 /*  read per evitare scritture parziali */
-static int readn(long fd, void *buf, size_t size) {
+/*static int readn(long fd, void *buf, size_t size) {
     size_t left = size;
     int r;
     char *bufptr = (char*)buf;
@@ -61,11 +62,11 @@ static int readn(long fd, void *buf, size_t size) {
 	bufptr  += r;
     }
     return size;
-}
+}*/
 
 
 /*  writen per evitare scritture parziali 3e parti*/ 
-static  int writen(long fd, void *buf, size_t size) {
+/*static  int writen(long fd, void *buf, size_t size) {
     size_t left = size;
     int r;
     char *bufptr = (char*)buf;
@@ -135,4 +136,3 @@ static inline void parseFilename(char* pathname, char* result){
     }
     strcpy(result, name);
 }
-

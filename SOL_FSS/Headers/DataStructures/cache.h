@@ -17,6 +17,11 @@ typedef struct mylock{
     pthread_cond_t condition; //variabile condizione
 }mylock;
 
+/* Struct per memorizzare info dei thread */
+typedef struct threadstat{
+    int thread_id;
+    int num_op;
+}threadstat;
 
 typedef struct filestats{
     int num_read;
@@ -54,8 +59,9 @@ typedef struct cache{
     int max_mem;                    //massima memoria occupabile
     int max_files;                  //numero massimo di file
     int occupied_memory;            //memoria attualmente occupata in cache
+    int num_files;                  //numero di file attualmente nella cache 
     pthread_mutex_t cache_mutex;   //mutex legata alla cache TODO forse * ?
-    conc_queue * filenamequeue;     //lista dei nomi dei file nella cache,per farla fifo    
+    conc_queue * filenamequeue;     //lista dei nomi dei file nella cache,per farla fifo
 }cache;
 
 /*#####################  Funzioni  ####################*/
@@ -64,3 +70,10 @@ int initmylock(mylock * lock);
 int OpenCachedFile( cache * cache,char * filename,int clientfd,int o_create,int o_lock);
 int AppendTo( cache * cache,char * filename,int clientfd,char * content);
 int CloseFile(cache * cache,char * filename,int sizefilename,int clientfd);
+int ReadFile(cache *cache,char * filename,int clientfd);
+int UnlockFile(cache * cache,char * filename,int clientfd);
+int LockFile(cache * cache,char * filename,int clientfd);
+int ReadNFile(cache *cache,int n,int clientfd);
+int RemoveFile(cache * cache,char * filename,int clientfd);
+int destroy_cache(cache * cache);
+

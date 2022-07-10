@@ -14,6 +14,7 @@ extern int D_flag;//flag per la dirname in scrittura
 extern int d_flag;//flag per la dirname in lettura
 extern char socketname[MAXNAME]; //nome della socket
 extern char overload_dir_name[MAXNAME];//nome della directory dove vengono messi i file che provocano overload
+extern char d_overload_dir_name[MAXNAME];//nome della directory per gestire overload per opzione -d
 extern int conn_set;//flag per vedere se la connessione con il server è attiva 
 extern int wait_time;//tempo di attesa tra richieste successive,associato a -t
 extern int fd_socket;//file descriptor della socket

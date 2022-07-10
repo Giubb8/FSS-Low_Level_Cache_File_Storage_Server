@@ -67,7 +67,7 @@ int ll_remove(llist** list, void* data, int(*cmp_fnc)(const void*, const void*))
             free(aux1);
         }
     }
-
+    
     return SUCCESS;
 }
 
@@ -76,16 +76,11 @@ int ll_search(llist* list, void* data, int(*cmp_fnc)(const void*, const void*)) 
     if(!list) {errno=EINVAL; return ERR;}     // Uninitialized list
     if(!data) {errno=EINVAL; return ERR;}   // invalid data
     
-    printf("BEFORE\n");
     fflush(stdout);
     conc_node aux1;
-    if(list->head==NULL){
-        printf("listhead e null\n");
-
-    }
+    
     
     for(aux1=list->head; aux1!=NULL && (cmp_fnc(aux1->data, data)); aux1=aux1->next);
-    printf("POST\n");
 
     if(!aux1) return FALSE;
     return TRUE;
