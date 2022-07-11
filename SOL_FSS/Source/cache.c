@@ -5,7 +5,7 @@
 #include <sys/syscall.h>
 #include "../Headers/server_globals.h"
 #include "../Headers/DataStructures/cache.h"
-
+#include <limits.h>
 /*#####################  Prototipi ########################*/
 
 cache *create_cache();
@@ -132,7 +132,7 @@ int OpenCachedFile(cache *cache, char *filename, int clientfd, int CREATE, int L
             printf("bucket[%d] vuoto\n",i);
         }
     }*/
-    int replace=0;
+    int replace=6;
     if (CREATE == 1){
 
         /* Controllo sul numero di file *///TODO rimpiazzamento mettere una lock 
@@ -219,7 +219,7 @@ int OpenCachedFile(cache *cache, char *filename, int clientfd, int CREATE, int L
         printf("filenamedup %s\n",filenamedup);*/
         int filenamelen=strlen(filename);
         char *filenamedup=malloc(filenamelen*sizeof(char));
-        strcpy(filenamedup,filename);
+        strncpy(filenamedup,filename,strlen(filename));
         /* Aggiungo il file creato alla cache */
         icl_hash_insert(cache->files_hash_table, (void *)filenamedup, (void *)newfile);
         
@@ -274,13 +274,13 @@ int OpenCachedFile(cache *cache, char *filename, int clientfd, int CREATE, int L
         int *clientfd_to_pass = malloc(sizeof(int));//TODO liberare questa memoria,edit:fatto dopo controllare che vada bene
         *clientfd_to_pass = clientfd;
         int err = ll_insert_head(&(file_to_open->who_opened), (void *)clientfd_to_pass, int_compare);
-        free(clientfd_to_pass);
         /* Stampa della Lista dei Client che hanno aperto il file */
         conc_node aux1 = (file_to_open->who_opened)->head;
         while (aux1 != NULL){
             printf("DATA: %d\n", *(int *)aux1->data);
             aux1 = aux1->next;
         }
+        //free(clientfd_to_pass);
 
         m_unlock(&(file_to_open->mutex.mutex));
         log_op("THREAD: %d CLIENT: %d OP: OPEN FILE: %s FLAG: UNLOCKED\n",(int)syscall(__NR_gettid),clientfd,filename);        
@@ -303,7 +303,7 @@ int AppendTo(cache *cache, char *filename, int clientfd, char *content){ // TODO
     fflush(stdout);
     myfile *file_to_append = NULL;
     myfile *file_to_erase = NULL;
-    int returnfile=0;
+    int returnfile=125;
     int content_len=0;
     int filename_len=0;
     printf("APPEND TO FILENAME %s\n", filename);
@@ -367,9 +367,11 @@ int AppendTo(cache *cache, char *filename, int clientfd, char *content){ // TODO
         fflush(stdout);
 
         m_unlock(&(file_to_append->mutex.mutex));
-        
+
+        /*Scrivo se debba esserci un rimpiazzamento o meno */
         writen(clientfd,&returnfile,sizeof(int));
 
+        printf("SERVER APPENDFILE RETURNFILE %d\n",returnfile);
         /* Se ho un file da rispedire indietro al client */
         if (returnfile == 1){
             content_len= strlen(file_to_erase->content);
@@ -386,10 +388,7 @@ int AppendTo(cache *cache, char *filename, int clientfd, char *content){ // TODO
             m_unlock(&tolog_struct_mutex);
 
         }
-        
-        int ret = 0;
-        writen(clientfd, &ret, sizeof(int));
-        
+    
         log_op("THREAD: %d CLIENT: %d OP: APPEND WRITTEN: %d FILE: %s\n",(int)syscall(__NR_gettid),clientfd,(int)strlen(file_to_append->content),filename);
         return SUCCESS;
     }
@@ -527,7 +526,7 @@ int ReadFile(cache *cache, char *filename, int clientfd){
     if (p_flag)
         (printf("%s %d SERVER READFILE\n", opseparator, n_op));
     myfile *file_to_read;
-    int ret = 1;
+    int ret = INT_MAX;
 
     /* Cerco il file nella tabella */
     m_lock(&(cache->cache_mutex));
@@ -553,8 +552,8 @@ int ReadFile(cache *cache, char *filename, int clientfd){
         sizecontent++;//TODO vedere se funziona
         void *filetosend = malloc(sizecontent * (sizeof(char)));
         strcpy((char *)filetosend, (char *)file_to_read->content);
-        writen(clientfd, &ret, sizeof(int));
-        printf("RET %d CONTENT %sTOSEND %s %d\n",ret, (char *)file_to_read->content, (char *)filetosend, sizecontent);
+        int resultwr=writen(clientfd, &ret, sizeof(int));
+        printf("RET %d CONTENT %sTOSEND %s sizecontent %d resultwtr %d\n",ret, (char *)file_to_read->content, (char *)filetosend, sizecontent,resultwr);
         writen(clientfd, &sizecontent, sizeof(int));
         writen(clientfd, filetosend, sizecontent);
         free(filetosend);

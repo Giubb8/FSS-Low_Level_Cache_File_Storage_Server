@@ -8,6 +8,41 @@
 
 
 
+// Wrapper function of the read SysCall handling the interrupted-reading problem
+int readn(int source, void* buf, int toread){
+  int bleft;     // Bytes left to read
+  int bread;     // Bytes read until now
+  bleft=toread;     // Before the start of the stream, nothing has been read
+  while(bleft>0) {
+    if((bread=read(source, buf, bleft)) < 0) {     // If an error verified
+      if(bleft==toread) return -1;     // If nothing has been read, return the error state
+      else break;     // If the error happened during the stream of data, return the number of bytes read
+    }
+    else if(bread==0) break;  // read operation completed
+    bleft-=bread;   // Updates the number of bytes left (subtracting those just read)
+    buf=(char*)buf+bread;   // Updates the current position of buffer pointer
+  }
+  return (toread-bleft);    // Returns the total number of bytes read
+}
+
+// Wrapper function of the write SysCall handling the interrupted-writing problem
+int writen(int source, void* buf, int towrite) {
+  int bleft;    // Bytes left to write
+  int bwritten;   // Bytes written until now
+  bleft=towrite;   // Before the start of the stream, nothing has been written
+  while(bleft>0) {
+    if((bwritten=write(source, buf, bleft)) < 0) {    // If an interruption verified
+      if(bleft==towrite) return -1;    // If nothing has been written, return the error state
+      else break;   // If the interruption happened during the stream of data, return the number of bytes written
+    }
+    else if (bwritten==0) break;  // write operation completed
+    bleft-=bwritten;    // Updates the number of bytes left (subtracting those just written)
+    buf=(char*)buf+bwritten;    // Updates the current position of buffer pointer
+  }
+  return (towrite-bleft);   // Returns the total number of bytes written
+}
+
+
 /* ########################  Structs  ######################*/
 
 /* struct per rappresentare il messaggio da inviare al server */
@@ -127,11 +162,11 @@ int closeConnection(const char* sockname){
  */
 int openFile(char * pathname, int flags){
     static int n_op=1;
-    if(p_flag)printf("%s %d OPENFILE\n",opseparator,n_op);
+    if(p_flag)printf("%s %d OPENFILE flags %d\n",opseparator,n_op,flags);
     n_op++;
     if(conn_set==1){
-        int replace;
-        int reply=0;
+        int replace=12;
+        int reply=5;
 
         if(flags==O_LOCK || flags== O_CREATE || flags==O_BOTH || flags==NO_FLAG){
             
@@ -242,7 +277,7 @@ int openFile(char * pathname, int flags){
         
 
         printf("REPLY %d\n",reply);
-        if(reply==SUCCESS){
+        if(reply==99){
             if(p_flag)printf("file: %s  aperto con successo\n%s\n",pathname,opseparator);
             return SUCCESS;
         }
@@ -293,11 +328,13 @@ int readFile(const char* pathname, void** buf, size_t* size){
         exit(EXIT_FAILURE);
     }
     /* Lettura della risposta */
-    if( (readn(fd_socket,&reply,sizeof(int)))<=0){
+    /*if((readn(fd_socket,&reply,sizeof(int)))<=0){
             perror("readn non riuscita READ");
             exit(EXIT_FAILURE);
-    }
-    printf("REPLY %d\n",reply);
+    }*/
+    int returned=readn(fd_socket,&reply,sizeof(int));
+    
+    printf("REPLY %d returned %d\n",reply,returned);
     if(reply>0){
         readn(fd_socket,size,sizeof(int));
         (*buf)=malloc((int)*size);
@@ -578,6 +615,7 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
     
     /* Aspetto risposta dal Server */
     readn(fd_socket, &response, sizeof(int));
+    printf("APPEND RESPONSE %d\n",response);
     if(response != 0){
         perror("Operazione APPEND non riuscita\n");
     }
@@ -711,7 +749,7 @@ int closeFile(const char* pathname){
         n_op++;
         if(p_flag)printf("%s %d CLOSEFILE\n",opseparator,n_op);
         /* Inizializzazione */
-        int reply=-20;        
+        int reply=20;        
         int operation=CLOSE;
         
         char pathname_to_parse[MAXPATH];
@@ -735,14 +773,21 @@ int closeFile(const char* pathname){
             perror("writen non riuscita CLOSE");
             exit(EXIT_FAILURE);
         }
-        
+        printf("REPLY CLOSE FILE prima %d\n",reply);
+
         /* Lettura della risposta */
-        if( (readn(fd_socket,&reply,sizeof(reply)))<= 0){
+        /*if( (readn(fd_socket,&reply,sizeof(int)))<= 0){
                 perror("readn non riuscita CLOSE");
                 exit(EXIT_FAILURE);
-        }
+        }*/
+        int letti=readn(fd_socket,&reply,sizeof(int));
+        printf("REPLY CLOSE FILE intermedio %d letti %d\n",reply,letti);
 
-
+       /* if( (readn(fd_socket,&reply,sizeof(int)))<= 0){
+                perror("readn non riuscita CLOSE");
+                exit(EXIT_FAILURE);
+        }*/
+        
         if(reply==SUCCESS){
             if(p_flag)printf("\nfile: %s  chiuso con successo\n%s",pathname,opseparator);
             return SUCCESS;

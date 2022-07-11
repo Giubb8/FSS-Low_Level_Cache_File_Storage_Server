@@ -88,6 +88,10 @@ int handleop(msg request,int clientfd){
       else if(request.flag==O_LOCK){
           lock=1;
       }
+      else if(request.flag==NO_FLAG){
+        lock=0;
+        create=0;
+      }
       else{
         perror("Flag non riconosciuto\n");
         exit(EXIT_FAILURE);
@@ -149,15 +153,16 @@ void * handleconnection(void * arg){
         if(request.op==OPEN){
             readn(clientfd,&(request.flag),sizeof(request.flag));
             readn(clientfd,&(request.size),sizeof(request.size));
-            readn(clientfd,&(request.filepath),request.size);
+            readn(clientfd,&(request.filepath),request.size);//TODO SIAMO SICURI CI VOGLIA INDIRIZZO 
             if(p_flag){
                 printf("\n%s",opseparator);
                 print_op(request.op);
                 print_flag(request.flag);
-                printf("contenuto: %s\n",request.filepath);
+                printf("contenuto FILEPATH: %s\n",request.filepath);
             }    
             ret=handleop(request,clientfd);
             size_t ret_t=ret;
+            ret=99;
             printf("ret handleconnetion %d ret_t %ld\n",ret,ret_t);
             int f=writen(clientfd,&ret,sizeof(int));
             //int f1=writen(clientfd,&ret,sizeof(int));
@@ -176,6 +181,8 @@ void * handleconnection(void * arg){
                 printf("sizepath %d\npath: %s\nsizecontent %d\ncontent: %s\n",request.size,request.filepath,request.contentsize,request.content);
             }   
             ret=handleop(request,clientfd);
+            printf("ret handleconnetion append %d \n",ret);
+            ret=999;
             writen(clientfd,&ret,sizeof(ret));                
             printf("%s\n",opseparator);
 
@@ -184,6 +191,8 @@ void * handleconnection(void * arg){
             readn(clientfd,&(request.size),sizeof(request.size));
             readn(clientfd,&(request.filepath),request.size);
             ret=handleop(request,clientfd);
+            ret=125;
+            printf("CLOSEFILE RET %d\n",ret);
             writen(clientfd,&ret,sizeof(ret));
         }
         else if(request.op==LOCK){
