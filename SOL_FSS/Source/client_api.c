@@ -374,6 +374,7 @@ int readNFiles(int N, const char* dirname){
     if(N==0){
         readn(fd_socket,&N,sizeof(int));
     }
+
     if(strlen(dirname)>0){
         /* Variabili per la scrittura dentro la cartella */
 

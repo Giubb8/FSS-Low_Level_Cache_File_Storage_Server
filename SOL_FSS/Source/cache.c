@@ -152,6 +152,7 @@ int OpenCachedFile(cache *cache, char *filename, int clientfd, int CREATE, int L
             m_lock(&(cache->filenamequeue->queue_mtx));
             char *filename_to_erase =NULL;
             //printf("DEBUG head filenamequeue %s\n",(char*)cache->filenamequeue->head->next->data);
+            printf("CONC QUE EMPTY %d\n",conc_queue_isEmpty(cache->filenamequeue));
             filename_to_erase= (char*)conc_queue_pop(cache->filenamequeue);
             m_unlock(&(cache->filenamequeue->queue_mtx));
             printf("filename to erase %s\n",filename_to_erase);
@@ -166,8 +167,8 @@ int OpenCachedFile(cache *cache, char *filename, int clientfd, int CREATE, int L
             fflush(stdout);
             printf("filetoerase: name: %s content: %s \n",file_to_erase->filename,file_to_erase->content);
             /* Aggiorno i valori della cache ed elimino il file dalla cache */
-            cache->occupied_memory -= strlen(filename_to_erase);
             cache->occupied_memory -= strlen(file_to_erase->content);
+            printf("cache occupied memory %d\n",cache->occupied_memory);
             cache->num_files--;
             icl_hash_delete(cache->files_hash_table, file_to_erase, free, (void *)destroyfile);
             m_unlock(&(cache->cache_mutex));
@@ -319,7 +320,7 @@ int AppendTo(cache *cache, char *filename, int clientfd, char *content){ // TODO
     /* Se provoca capacity miss */
     if ((cache->occupied_memory + strlen(content) > (cache->max_mem))){ /*&& ( (strlen(content)+strlen((char*)file_to_appendd->content))<MAXCONTENT)*/
         /* Espelle il file con politica FIFO */
-
+        printf("REPLACE APPEND occupied memory %d strlen content %d maxmem %d\n",cache->occupied_memory,strlen(content),cache->max_mem);
         returnfile = 1; // segnalo che dopo dovro liberare il file
         
         /* Prendo il nome del File scelto da Sostituire */
@@ -337,8 +338,9 @@ int AppendTo(cache *cache, char *filename, int clientfd, char *content){ // TODO
         }
         fflush(stdout);
         /* Aggiorno i valori della cache ed elimino il file dalla cache */
-        cache->occupied_memory -= strlen(filename_to_erase);
         cache->occupied_memory -= strlen(file_to_erase->content);
+        printf("cache occupied memory %d\n",cache->occupied_memory);
+
         cache->num_files--;
         icl_hash_delete(cache->files_hash_table, file_to_erase, free, (void *)destroyfile);
         m_unlock(&(cache->cache_mutex));
@@ -360,7 +362,10 @@ int AppendTo(cache *cache, char *filename, int clientfd, char *content){ // TODO
     /* Se il client ha la lock sul file o se nessuno ha la lock sul file */
     if (file_to_append->wholocked == clientfd || file_to_append->wholocked == -1){
         /* Aggiornamento per logging */
-        cache->occupied_memory += strlen(file_to_append->content);
+        int lencontent=strlen(content);
+        cache->occupied_memory += lencontent;
+        printf("cache occupied memory %d lencontent %d \n",cache->occupied_memory,lencontent);
+
         m_lock(&tolog_struct_mutex);
         if(cache->occupied_memory>tolog.maxcapacity_tolog)
             tolog.maxcapacity_tolog=cache->occupied_memory;
@@ -585,7 +590,7 @@ int ReadNFile(cache *cache, int n, int clientfd){
     static int n_op = 0;
     n_op++;
     if (p_flag)
-        (printf("%s %d SERVER READ_N_FILE\n\n", opseparator, n_op));
+        (printf("%s %d SERVER READ_N_FILE numfile presenti %d\n\n", opseparator, n_op,cache->num_files));
     myfile *file_to_read;
     int sended = 0;
     int tosend;
@@ -596,7 +601,8 @@ int ReadNFile(cache *cache, int n, int clientfd){
         tosend = cache->num_files;
     else//altrimenti setto il numero giusto 
         tosend = n;
-    
+
+        
     m_lock(&(cache->cache_mutex));
     /* Stampa della Lista dei Client che hanno aperto il file */
     icl_entry_t *bucket, *curr, *next;
@@ -658,8 +664,9 @@ int RemoveFile(cache *cache, char *filename, int clientfd){
         return EBUSY;
     }
     else{
-        cache->occupied_memory -= strlen(file_to_remove->filename);
         cache->occupied_memory -= strlen(file_to_remove->content);
+        printf("cache occupied memory %d\n",cache->occupied_memory);
+
         cache->num_files--;
         err = icl_hash_delete(cache->files_hash_table, file_to_remove->filename, free, (void *)destroyfile);
         printf("err %d", err);
