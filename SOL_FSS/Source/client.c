@@ -99,40 +99,52 @@ int main(int argc, char *argv[]){
                 break;
             case 'x':
                 handle_x(socketname);
+                msleep(wait_time);
                 break;
                 
             case 't':
                 handle_t(optarg);
+                msleep(wait_time);
                 break;
             case 'D':
                 handle_D(optarg);
+                msleep(wait_time);
                 break;
             case 'd':
                 handle_d(optarg);
+                msleep(wait_time);
                 break;
             case 'r':
                 handle_r(optarg);
+                msleep(wait_time);
                 break;
             case 'o':
                 handle_o(optarg);
+                msleep(wait_time);
                 break;
             case 'W':
                 handle_W(optarg);
+                msleep(wait_time);
                 break;
             case 'l':
                 handle_l(optarg);
+                msleep(wait_time);
                 break;
             case 'u':
                 handle_u(optarg);
+                msleep(wait_time);
                 break;
             case 'R':
                 handle_R(optarg);
+                msleep(wait_time);
                 break;
             case 'w':
                 handle_w(optarg);
+                msleep(wait_time);
                 break;
             case 'c':
                 handle_c(optarg);
+                msleep(wait_time);
                 break;
             default:
                 break;

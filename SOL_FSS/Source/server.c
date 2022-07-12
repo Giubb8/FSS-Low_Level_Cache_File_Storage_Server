@@ -98,6 +98,7 @@ int main(int argc,char *argv[]){
     unlink(socketname);    
     fclose(filelog);
     destroy_cache(mycache);
+    queue_dealloc_full(log_queue);
     printf("Finito tutto\n");
     //exit(EXIT_SUCCESS);
     return 0;

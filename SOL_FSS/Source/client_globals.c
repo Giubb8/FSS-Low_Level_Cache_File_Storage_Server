@@ -15,7 +15,7 @@ char socketname[MAXNAME]; //nome della socket
 char overload_dir_name[MAXNAME];//nome della directory dove vengono messi i file che provocano overload
 char d_overload_dir_name[MAXNAME];//nome della directory per gestire overload per opzione -d
 int conn_set=0;//flag per vedere se la connessione con il server è attiva 
-int wait_time=0;//tempo di attesa tra richieste successive,associato a -t
+int wait_time=100;//tempo di attesa tra richieste successive,associato a -t
 int fd_socket=-1;//file descriptor della socket
 char * separator="~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
 char * opseparator="-------------------------------------------------------------------------------------------\n";

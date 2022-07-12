@@ -86,7 +86,6 @@ void* conc_queue_pop(conc_queue* queue) {
     if(temperr) {errno=temperr; return (void*)NULL;}
     temperr=pthread_mutex_unlock(&(aux->node_mtx));
     if(temperr) {errno=temperr; return (void*)NULL;}
-
     return (conc_node_destroy(aux));
 }
 

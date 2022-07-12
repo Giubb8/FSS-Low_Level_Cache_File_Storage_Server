@@ -278,6 +278,3 @@ void final_log(char * buff){
 
 
 
-
-
-

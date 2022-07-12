@@ -25,6 +25,5 @@ void* conc_node_destroy(conc_node node) {
     if(temperr) {errno=temperr; return NULL;}
     free(node);
     node=NULL;
-
     return (void*)tempdata;
 }

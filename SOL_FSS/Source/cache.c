@@ -73,6 +73,7 @@ void destroyfile(myfile *file){
     free(file->content);
     pthread_mutex_destroy(&(file->mutex.mutex));
     pthread_cond_destroy(&(file->mutex.condition));
+    ll_dealloc_full(file->who_opened);
     free(file);
 }
 
@@ -132,7 +133,7 @@ int OpenCachedFile(cache *cache, char *filename, int clientfd, int CREATE, int L
             printf("bucket[%d] vuoto\n",i);
         }
     }*/
-    int replace=6;
+    int replace=0;
     if (CREATE == 1){
 
         /* Controllo sul numero di file *///TODO rimpiazzamento mettere una lock 
@@ -149,7 +150,9 @@ int OpenCachedFile(cache *cache, char *filename, int clientfd, int CREATE, int L
 
             /* Prendo il nome del File scelto da Sostituire */
             m_lock(&(cache->filenamequeue->queue_mtx));
-            char *filename_to_erase = conc_queue_pop(cache->filenamequeue);
+            char *filename_to_erase =NULL;
+            //printf("DEBUG head filenamequeue %s\n",(char*)cache->filenamequeue->head->next->data);
+            filename_to_erase= (char*)conc_queue_pop(cache->filenamequeue);
             m_unlock(&(cache->filenamequeue->queue_mtx));
             printf("filename to erase %s\n",filename_to_erase);
             /* Prendo il file scelto */
@@ -184,6 +187,8 @@ int OpenCachedFile(cache *cache, char *filename, int clientfd, int CREATE, int L
             m_lock(&tolog_struct_mutex);
             tolog.replaceop_tolog++;
             m_unlock(&tolog_struct_mutex);
+
+            if(filename_to_erase) free(filename_to_erase);
 
         }else{
            printf("replace: %d\n",replace);
@@ -220,11 +225,16 @@ int OpenCachedFile(cache *cache, char *filename, int clientfd, int CREATE, int L
         int filenamelen=strlen(filename);
         char *filenamedup=malloc(filenamelen*sizeof(char));
         strncpy(filenamedup,filename,strlen(filename));
+
         /* Aggiungo il file creato alla cache */
         icl_hash_insert(cache->files_hash_table, (void *)filenamedup, (void *)newfile);
-        
+        printf("filenamedup to push %s\n",filenamedup);
         /* Aggiungo il nome del file alla coda dei file della cache  */
-        conc_queue_push((cache->filenamequeue), (void *)filenamedup);
+        m_lock(&(cache->filenamequeue->queue_mtx));
+        int retpush=conc_queue_push((cache->filenamequeue), (void *)filenamedup);
+        printf("retpush %d  head %s\n",retpush,cache->filenamequeue->head->next->data);
+        
+        m_unlock(&(cache->filenamequeue->queue_mtx));
 
         /* Aggiorno la Statistica per il log*/                
         cache->num_files++;
@@ -235,12 +245,10 @@ int OpenCachedFile(cache *cache, char *filename, int clientfd, int CREATE, int L
 
         if (m_unlock(&(cache->cache_mutex)) != 1) // rilascio la lock sulla cache
             return FATAL_ERROR;
-        printf("DEBUGWEWEWE\n");
         log_op("THREAD: %d CLIENT: %d OP: OPEN FILE: %s FLAG: LOCKED\n",(int)syscall(__NR_gettid),clientfd,filename);        
-        printf("DEBUG 2 after openlogop\n");
         //if(filenamedup) free(filenamedup);
         int ret=SUCCESS;
-        return SUCCESS;
+        return ret;
     }
     else{
         /*Avviso che non ci puo essere un rimpiazzamento */
@@ -303,7 +311,7 @@ int AppendTo(cache *cache, char *filename, int clientfd, char *content){ // TODO
     fflush(stdout);
     myfile *file_to_append = NULL;
     myfile *file_to_erase = NULL;
-    int returnfile=125;
+    int returnfile=0;
     int content_len=0;
     int filename_len=0;
     printf("APPEND TO FILENAME %s\n", filename);
@@ -674,10 +682,12 @@ int RemoveFile(cache *cache, char *filename, int clientfd){
 
 
 int destroy_cache(cache * cache){
+    printf("DENTRO DESTROY CACHE \n");
     //locko
     m_lock(&(cache->cache_mutex));
     //dealloco lista nomi
-    queue_dealloc_full(cache->filenamequeue);
+    int deallocqueue=queue_dealloc_full(cache->filenamequeue);
+    printf("deallocqueue %d\n",deallocqueue);
     //dealloco tabella hash
     if(cache->files_hash_table!=NULL)
         icl_hash_destroy(cache->files_hash_table, free, (void (*)(void *)) destroyfile);

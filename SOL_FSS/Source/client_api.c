@@ -165,8 +165,8 @@ int openFile(char * pathname, int flags){
     if(p_flag)printf("%s %d OPENFILE flags %d\n",opseparator,n_op,flags);
     n_op++;
     if(conn_set==1){
-        int replace=12;
-        int reply=5;
+        int replace=-1;
+        int reply=-1;
 
         if(flags==O_LOCK || flags== O_CREATE || flags==O_BOTH || flags==NO_FLAG){
             
@@ -209,6 +209,7 @@ int openFile(char * pathname, int flags){
         printf("replace letta: %d\n",replace);
         /* Se devo rimpiazzare un file */
         if(replace==1){
+            printf("OPENFILE RIMPIAZZAMENTO\n");
             DIR *dir = NULL; //cartella dove salvare file 
             int file_to_store_len = 0; //lunghezza del file ricevuto
             int file_to_store_name_len = 0; //lunghezza del nome file ricevuto
@@ -217,7 +218,8 @@ int openFile(char * pathname, int flags){
             char file_to_store_name[MAXNAME]; //nome del file ricevuto 
             char* file_to_store_content = NULL; //contenuto del file ricevuto
             
-            
+            printf("debug1\n");
+
             if(strlen(overload_dir_name)>0){//se la cartella esiste  la apro
                 dir = opendir(overload_dir_name);
                 if(!dir) {
@@ -225,9 +227,12 @@ int openFile(char * pathname, int flags){
                     return ERROR;
                 }
             }
+            printf("debug2\n");
         
             /* Leggo la dimensione del file espulso, quando ho finito (0) mi fermo*/
             readn(fd_socket, &file_to_store_len, sizeof(int));
+            printf("debug3\n");
+
             if(file_to_store_len != 0){
                  //Quando ricevo 0 esco
                 file_to_store_content = malloc(file_to_store_len*sizeof(char));        //TODO CONTROLLO SU STORED DATA controllare che non sia null
@@ -272,12 +277,10 @@ int openFile(char * pathname, int flags){
                 perror("readn non riuscita OPEN");
                 exit(EXIT_FAILURE);
         }9*/
-        printf("REPLY %d\n",reply);
         readn(fd_socket,&reply,sizeof(int));
-        
-
         printf("REPLY %d\n",reply);
-        if(reply==99){
+
+        if(reply==SUCCESS){
             if(p_flag)printf("file: %s  aperto con successo\n%s\n",pathname,opseparator);
             return SUCCESS;
         }
@@ -609,7 +612,7 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
     
         if(dir) closedir(dir);
 
-        if(file_to_store_content) free(file_to_store_content);
+        
 
     }
     

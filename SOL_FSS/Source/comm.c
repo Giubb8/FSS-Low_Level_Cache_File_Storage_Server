@@ -103,7 +103,8 @@ int handleop(msg request,int clientfd){
       return ret;
     }
     if(request.op==APPEND){
-      int ret=AppendTo(mycache,request.filepath,clientfd,request.content);
+      int ret=-1;
+      ret=AppendTo(mycache,request.filepath,clientfd,request.content);
       fflush(stdout);
       return ret;
     }
@@ -147,7 +148,8 @@ void * handleconnection(void * arg){
     int clientfd=(int)(uintptr_t)arg;
     while (/*sighup==0 &&*/ sighintquit==0){   //se ricevo sighint o sigquit non devo più gestire le richieste con i client connessi  
         msg request={0};
-
+        memset(request.filepath,0,sizeof(request.filepath));
+        memset(request.content,0,sizeof(request.content));
         readn(clientfd,&(request.op),sizeof(request.op));
 
         if(request.op==OPEN){
@@ -161,9 +163,7 @@ void * handleconnection(void * arg){
                 printf("contenuto FILEPATH: %s\n",request.filepath);
             }    
             ret=handleop(request,clientfd);
-            size_t ret_t=ret;
-            ret=99;
-            printf("ret handleconnetion %d ret_t %ld\n",ret,ret_t);
+            printf("ret handleconnetion %d\n",ret);
             int f=writen(clientfd,&ret,sizeof(int));
             //int f1=writen(clientfd,&ret,sizeof(int));
             //printf("f %d f1 %d\n",f,f1);
@@ -182,7 +182,6 @@ void * handleconnection(void * arg){
             }   
             ret=handleop(request,clientfd);
             printf("ret handleconnetion append %d \n",ret);
-            ret=999;
             writen(clientfd,&ret,sizeof(ret));                
             printf("%s\n",opseparator);
 
@@ -191,7 +190,6 @@ void * handleconnection(void * arg){
             readn(clientfd,&(request.size),sizeof(request.size));
             readn(clientfd,&(request.filepath),request.size);
             ret=handleop(request,clientfd);
-            ret=125;
             printf("CLOSEFILE RET %d\n",ret);
             writen(clientfd,&ret,sizeof(ret));
         }
@@ -303,10 +301,11 @@ void* dispatcher(void * arg){
         m_signal(&(clientsqueue->queue_cv));//segnalando che la coda ha ora almeno un elemento
     
         m_unlock(&(clientsqueue->queue_mtx)); 
+
     
     }    
     /* Operazione di Logging per le info della cache */
-    char finalbuff[1024];
+    char finalbuff[1024]={'\0'};
     final_log(finalbuff);
     /*Apro il file,Scrivo e Chiudo */
     int logfile_fd;
@@ -322,6 +321,7 @@ void* dispatcher(void * arg){
     }
     m_signal(&(log_queue->queue_cv));
     
+    queue_dealloc_full(clientsqueue);
     pthread_exit((void*)1);
 
 }
