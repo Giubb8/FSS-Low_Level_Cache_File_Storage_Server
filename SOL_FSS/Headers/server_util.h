@@ -16,7 +16,7 @@
 
 
 
-/*################################ COSTANTI ############################################*/
+/*################################ COSTANTI E FLAG  ############################################*/
 #define _GNU_SOURCE
 #define TRUE 1
 #define MAXSOCKETNAME 100
@@ -38,35 +38,34 @@ void initconfig(int argc,char const * pos);
 void sig_intquit_handler();
 void sig_sighup_handler();
 void signal_handling();
-/*int readn(long fd, void *buf, size_t size);
-int writen(long fd, void *buf, size_t size);*/
 int readn(int source, void* buf, int toread);
 int writen(int source, void* buf, int towrite);
-
+int d_readn(int source, void* buf, int toread);
+int d_writen(int source, void* buf, int towrite);
 void print_op(int opcode);
 void print_flag(int flag);
 void * logger_func(void* arg);
 void final_log(char * buff);
-//tolog_struct tolog_init();
+
 /*################################ FUNZIONI  ############################################*/
 
 
-// Definition an error-management printing function
+// Funzione per Gestione Errori per il log 
 #define LOG_ERR(err_code, err_desc) \
   errno=err_code; \
   fprintf(stderr, "%s: %s\n", err_desc, strerror(err_code));
 
-/* Funzione per il logging */ 
+/* Funzione per il logging,vaargs in maiuscolo è per fare riferirsi a va args come macro,define perche dava comportamenti strani definita normalmente per la variadicita*/ 
 #define log_op(fmt, ...) \
     { \
         int temperr;\
         char* buffer=malloc(1024*sizeof(char)); \
-        if(!buffer) {LOG_ERR(temperr, "logging: allocating buffer"); return ERROR;} \
+        if(!buffer) {LOG_ERR(temperr, "logging: allocazione buffer"); return ERROR;} \
         memset(buffer, '\0', 1024); \
-        sprintf(buffer, fmt, ##__VA_ARGS__); \
+        sprintf(buffer, fmt, ##__VA_ARGS__);\
         m_lock(&(log_queue->queue_mtx));\
         if((temperr=conc_queue_push(log_queue, (void*)buffer))==ERROR) { \
-            LOG_ERR(errno, "logging: pushing log into queue"); return ERROR; \
+            LOG_ERR(errno, "logging: push sulla queue"); return ERROR; \
         } \
         m_signal(&(log_queue->queue_cv));\
         m_unlock(&(log_queue->queue_mtx));\

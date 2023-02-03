@@ -1,7 +1,7 @@
 #pragma once
 
 #include <sys/socket.h>
-#define MAXPATH 100 //lunghezza del path massimo per raggiungere la socket
+#define MAXPATH 300 //lunghezza del path massimo per raggiungere la socket
 #define MAXNAME 100
 
 

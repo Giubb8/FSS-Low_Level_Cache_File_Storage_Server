@@ -1,15 +1,19 @@
 CC=gcc
 CFLAGS=-g
+PTHREAD=-pthread
 
-all: client server
+CLIENT_DEP=client.c client_api.c client_globals.c 
+SERVER_DEP=server.c cache.c server_util.c conc_list.c server_globals.c  hash_table.c comm.c  conc_elem.c conc_queue.c
+
+all: client server 
 
 rall: client server socket
 
-client: client.c client_api.c
-	$(CC) $(CFLAGS)  client.c client_api.c client_globals.c -o client
+client: $(CLIENT_DEP)
+	$(CC) $(CFLAGS)  $(CLIENT_DEP) -o $@
 
-server: server.c server_globals.c conc_list.c hash_table.c comm.c  conc_elem.c conc_queue.c cache.c server_util.c
-	$(CC) $(CFLAGS) -pthread server.c cache.c server_util.c conc_list.c server_globals.c  hash_table.c comm.c  conc_elem.c conc_queue.c -o server
+server: $(SERVER_DEP)
+	$(CC) $(CFLAGS) $(PTHREAD) $(SERVER_DEP)  -o $@
 
 socket: mysocket
 	rm mysocket
@@ -18,3 +22,29 @@ clean:
 	rm client
 	rm server
 	
+cleanall:
+	rm client
+	rm server
+	rm -r dir
+	rm -r dir_replace
+	rm -r dir_replace_2
+	rm mysocket
+
+test1: 
+	make all
+	chmod +x ../Script/script_1.sh
+	bash ../Script/script_1.sh
+	bash ../Script/statistiche.sh
+
+test2: 
+	make all
+	chmod +x ../Script/script_2.sh
+	bash ../Script/script_2.sh
+	bash ../Script/statistiche.sh
+
+test3: 
+	make all
+	chmod +x ../Script/script_3.sh
+	bash ../Script/script_3.sh
+	bash ../Script/statistiche.sh
+	make socket

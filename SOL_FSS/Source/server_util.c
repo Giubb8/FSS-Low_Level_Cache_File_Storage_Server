@@ -14,11 +14,10 @@ void initconfig(int argc,char const * pos){
     char Csockname[MAXSOCKETNAME]={0};  
     int Cmemorydimension; 
 
-
     /*apertura file in lettura*/
     FILE*fd;
     if((fd=fopen(pos,"r"))==NULL){
-        perror("aprendo il file");
+        perror("aprendo il file fd");
         fclose(fd);
         exit(EXIT_FAILURE);
     }
@@ -49,7 +48,7 @@ void initconfig(int argc,char const * pos){
 //handling sigint e sigquit
 void sig_intquit_handler(){
     
-    printf("Handling segnale SIGHINTQUIT\n");
+    if(p_flag)printf("Handling segnale SIGHINTQUIT\n");
     sighintquit=1;
     shutdown(fd_socket,SHUT_RD);
     return;
@@ -57,7 +56,7 @@ void sig_intquit_handler(){
 
 //handling sighup
 void sig_sighup_handler(){
-    printf("Handling segnale SIGHUP\n");
+    if(p_flag)printf("Handling segnale SIGHUP\n");
     sighup=1;
     shutdown(fd_socket,SHUT_RD);
     return;
@@ -68,7 +67,9 @@ void signal_handling(){
     struct sigaction s_iq;
     struct sigaction s_h;
     memset(&s_iq,0,sizeof(s_iq));
-    memset(&s_iq,0,sizeof(s_h));
+    memset(&s_h,0,sizeof(s_h));
+    s_h.sa_flags=0;//necessario per errore valgrind,memset non bastava
+    //s_iq.sa_flags=0;
     s_iq.sa_handler=sig_intquit_handler;
     s_h.sa_handler=sig_sighup_handler;
     sigaction(SIGINT,&s_iq,NULL);
@@ -110,74 +111,41 @@ int writen(int source, void* buf, int towrite) {
   }
   return (towrite-bleft);   // Returns the total number of bytes written
 }
-/*  read per evitare scritture parziali */
-/*int readn(long fd, void *buf, size_t size) {
-    size_t left = size;
-    int r;
-    char *bufptr = (char*)buf;
-    while(left>0) {
-	if ((r=read((int)fd ,bufptr,left)) == -1) {
-	    if (errno == EINTR) continue;
-	    return -1;
-	}
-	if (r == 0) return 0;   // EOF
-        left    -= r;
-	bufptr  += r;
-    }
-    return size;
-}
 
-
-/*  writen per evitare scritture parziali 3e parti*/ 
-/*int writen(long fd, void *buf, size_t size) {
-    size_t left = size;
-    int r;
-    char *bufptr = (char*)buf;
-    while(left>0) {
-	if ((r=write((int)fd ,bufptr,left)) == -1) {
-	    if (errno == EINTR) continue;
-	    return -1;
-	}
-	if (r == 0) return 0;  
-        left    -= r;
-	bufptr  += r;
-    }
-    return 1;
-}*/
-
+/* Funzione per effettuare le print dei nomi delle operazioni */
 void print_op(int opcode){
     static int n_op=1;
-    printf("%d ",n_op);
+    if(p_flag)printf("%d ",n_op);
     switch (opcode){
     case 0:
-        printf("SERVER TURNOFF\n");
+        if(p_flag)printf("SERVER TURNOFF\n");
         break;
     case 1:
-        printf("SERVER OPEN\n");
+        if(p_flag)printf("SERVER OPEN\n");
         break;
     case 2:
-        printf("SERVER READ\n");
+        if(p_flag)printf("SERVER READ\n");
         break;
     case 3:
-        printf("SERVER READN\n");
+        if(p_flag)printf("SERVER READN\n");
         break;
     case 4:
-        printf("SERVER WRITE\n");
+        if(p_flag)printf("SERVER WRITE\n");
         break;
     case 5:
-        printf("SERVER REMOVE\n");
+        if(p_flag)printf("SERVER REMOVE\n");
         break;
     case 6:
-        printf("SERVER CLOSE\n");
+        if(p_flag)printf("SERVER CLOSE\n");
         break;
     case 7:
-        printf("SERVER APPEND\n");
+        if(p_flag)printf("SERVER APPEND\n");
         break;
     case 8:
-        printf("SERVER LOCK\n");
+        if(p_flag)printf("SERVER LOCK\n");
         break;
     case 9:
-        printf("SERVER UNLOCK\n");
+        if(p_flag)printf("SERVER UNLOCK\n");
         break;
     default:
         break;
@@ -187,19 +155,21 @@ void print_op(int opcode){
     return;
     
 }
+
+/* Funzione per Stampare i flag delle funzioni */
 void print_flag(int flag){
     switch (flag){
     case O_BOTH:
-        printf("FLAG OBOTH\n");
+        if(p_flag)printf("FLAG OBOTH\n");
         break;
     case NO_FLAG:
-        printf("FLAG NOFLAG\n");
+        if(p_flag)printf("FLAG NOFLAG\n");
         break;
     case O_CREATE:
-        printf("FLAG OCREATE\n");
+        if(p_flag)printf("FLAG OCREATE\n");
         break;
     case O_LOCK:
-        printf("FLAG OLOCK\n");
+        if(p_flag)printf("FLAG OLOCK\n");
         break;
 
     default:
@@ -207,50 +177,60 @@ void print_flag(int flag){
     }
 }
 
+/* Funzione per effettuare il logging sul file apposito */
 void* logger_func(void* arg) {
     int temperr;
     int logfile_fd;
     char* buffer=NULL;
     fflush(stdout);
+    /* Fino a quando non ricevo i segnali eseguo...*/
     while(sighintquit==0 && sighup==0) {
         fflush(stdout);
 
         //locko la queue 
         m_lock(&(log_queue->queue_mtx));
         //controllo se sono stati inseriti nuovi elementi
-        while(!(buffer=(char*)conc_queue_pop(log_queue)) && (sighintquit==0)) {
+        while(!(buffer=(char*)conc_queue_pop(log_queue)) && (sighintquit==0) && (sighup==0)) {
+            if(p_flag)printf("prima della wait logger func,sighup: %d\n",sighup);
             m_wait(&(log_queue->queue_cv), &(log_queue->queue_mtx));
         }
-    fflush(stdout);
+        fflush(stdout);
 
         m_unlock(&(log_queue->queue_mtx));
-        if(sighintquit) break;   // server termina
 
+        /* Ricontrollo i Segnali */
+        if(sighintquit==1 || sighup==1){
+            if(p_flag)printf("logger: func break\n");
+            break;   // server termina
+        }
+            
+        /* Apro il file*/
         if((logfile_fd=open(LOGFILE_PATH, O_WRONLY | O_APPEND | O_CREAT, 0777))==ERROR) {
             LOG_ERR(errno, "logger: aprendo il file");
             exit(EXIT_FAILURE);
         }
-
+        /* Scrivo sul file */
         writen(logfile_fd, (void*)buffer, strlen(buffer));
-        
+
+        /* E lo chiudo*/
         if((close(logfile_fd))==ERROR) {
             LOG_ERR(errno, "logger: chiudendo il file ");
             exit(EXIT_FAILURE);
         }
 
-
         if(buffer) {free(buffer); buffer=NULL;}
     }
-    printf("uscito da logger function sighint==%d\n",sighintquit);
+    if(p_flag)printf("uscito da logger function sighint==%d\n",sighintquit);
     fflush(stdout);
     fflush(stderr);
     
     if(buffer)
         free(buffer);
-    pthread_exit((void*)1);
+    //pthread_exit((void*)1);
+    return NULL;
 }
 
-/* Funzione per effettuare il log delle statistiche relative alla cache */
+/* Funzione per preparare il log delle statistiche relative alla cache */
 void final_log(char * buff){
     /*Inizializzazione delle stringhe da copiare*/
     char s_maxdim[10];
@@ -276,5 +256,36 @@ void final_log(char * buff){
     strcat(buff,s_nclient);
 }
 
+/* Funzione wrapper per il controllo degli errori della readn */
+int d_readn(int source, void* buf, int toread){
+    static int i=0;
+    int res=0;
+    if(res=(readn(source,buf,toread))<0){
+        printf("%d",i);
+        perror(" readn fallita\n");
+        exit(EXIT_FAILURE);
+    }
+    return res;
+}
+/* Funzione wrapper per il controllo degli errori della writen */
+int d_writen(int source, void* buf, int towrite){
+    static int i=0;
+    int res=0;
+    if(res=(writen(source,buf,towrite))<=0){
+        printf("%d",i);
+        perror(" writen fallita\n");
+        exit(EXIT_FAILURE);
+    }
+    return res;
+}
 
-
+/* Funzione per inizializzare la struttura per il file di log */
+tolog_struct tolog_init(){
+    tolog_struct tstruct;
+    tstruct.clientserved_tolog=0;
+    tstruct.maxcapacity_tolog=0;
+    tstruct.maxconnection_tolog=0;
+    tstruct.maxnumfile_tolog=0;
+    tstruct.replaceop_tolog=0;
+    return tstruct;
+}

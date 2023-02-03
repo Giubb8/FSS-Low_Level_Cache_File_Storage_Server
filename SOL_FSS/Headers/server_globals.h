@@ -2,9 +2,13 @@
 #include<sys/socket.h>
 #include "./DataStructures/cache.h"
 
+/* ############################### COSTANTI ################################*/
+
 #define MAXSOCKETNAME 100
 #define SOCKETPATHMAX 100 //lunghezza del path massimo per raggiungere la socket
 #define MAXPATH 100 //lunghezza del path massimo per raggiungere la socket
+
+/* ############################### STRUTTURE ################################*/
 
 /* Struttura per le info da loggare sul server */
 typedef struct tolog_struct{
@@ -16,7 +20,8 @@ typedef struct tolog_struct{
 }tolog_struct;
 
 
-/*Flags & Globals*/
+/* ############################### GLOBALS ################################*/
+
 extern char socketname[MAXSOCKETNAME];
 extern int num_workers; 
 extern int memory_dimension;
@@ -42,6 +47,9 @@ extern pthread_mutex_t p_client_mutex;
 extern pthread_mutex_t tolog_struct_mutex;//mutex associata alla struttura da loggare
 extern tolog_struct tolog;
 
+/* ############################### STRUTTURE ################################*/
+
+
 /*codice per ogni operazione*/
 enum opcode_{
     TURNOFF =0,
@@ -64,9 +72,5 @@ enum errors_{
 };
 
 
-/* Struttura per inviare le risposte al client */
-typedef struct rep{
-  int done;
-  int more;
-  int err;
-}rep;
+
+tolog_struct tolog_init();

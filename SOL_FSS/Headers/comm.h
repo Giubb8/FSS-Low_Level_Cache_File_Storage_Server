@@ -9,8 +9,11 @@
 #include "../Headers/DataStructures/conc_queue.h"
 #include "../Headers/DataStructures/cache.h"
 
+/* ############################### COSTANTI ################################*/
+
 #define MAXPATH 100 //lunghezza del path massimo per raggiungere la socket
 #define MAXCONTENT 2028 //lunghezza massima del file
+
 
 typedef struct message{
   int op;
@@ -21,10 +24,11 @@ typedef struct message{
   char  content[MAXCONTENT];
   int contentsize;
 }msg;
+/* ############################### PROTOTIPI ################################*/
 
 void * dispatcher(void * arg);
 void * threadfunction(void * arg);
-void * handleconnection(void * arg);
+void * handleconnection(int arg);
 int handleop(msg request,int clientfd);
 
 

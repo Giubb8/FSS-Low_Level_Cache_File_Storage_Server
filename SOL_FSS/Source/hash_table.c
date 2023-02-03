@@ -151,7 +151,7 @@ icl_hash_insert(icl_hash_t *ht, void *key, void *data)
     if (!curr)
         return NULL;
 
-    curr->key =strdup(key);
+    curr->key =key;
     curr->data = data;
     curr->next = ht->buckets[hash_val]; /* add at start */
 

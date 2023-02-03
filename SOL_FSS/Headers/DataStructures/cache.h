@@ -8,7 +8,7 @@
 #include"../comm.h"
 
 
-/*################## Structs ###################*/
+/*################## STRUCTS ###################*/
 
 
 /* lock con variabile condizione associata */
@@ -64,10 +64,10 @@ typedef struct cache{
     conc_queue * filenamequeue;     //lista dei nomi dei file nella cache,per farla fifo
 }cache;
 
-/*#####################  Funzioni  ####################*/
+/*#####################  FUNZIONI  ####################*/
 cache * create_cache();
 int initmylock(mylock * lock);
-int OpenCachedFile( cache * cache,char * filename,int clientfd,int o_create,int o_lock);
+int OpenFile( cache * cache,char * filename,int clientfd,int o_create,int o_lock);
 int AppendTo( cache * cache,char * filename,int clientfd,char * content);
 int CloseFile(cache * cache,char * filename,int sizefilename,int clientfd);
 int ReadFile(cache *cache,char * filename,int clientfd);

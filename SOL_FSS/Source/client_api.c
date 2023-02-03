@@ -6,6 +6,7 @@
 #include"../Headers/client_globals.h"
 #include "../Headers/client_util.h"
 
+/* ######################################## FUNZIONI SUPPORTO  ################################## */
 
 
 // Wrapper function of the read SysCall handling the interrupted-reading problem
@@ -42,16 +43,30 @@ int writen(int source, void* buf, int towrite) {
   return (towrite-bleft);   // Returns the total number of bytes written
 }
 
+/* Funzione wrapper per il controllo dell'errore per readn */
+int d_readn(int source, void* buf, int toread){
+    static int i=0;
+    int res=0;
+    if(res=(readn(source,buf,toread))<0){
+        printf("%d",i);
+        perror(" readn fallita\n");
+        exit(EXIT_FAILURE);
+    }
+    return res;
+}
+/* Funzione wrapper per il controllo dell'errore per writen */
+int d_writen(int source, void* buf, int towrite){
+    static int i=0;
+    int res=0;
+    if(res=(writen(source,buf,towrite))<0){
+        printf("%d",i);
+        perror(" writen fallita\n");
+        exit(EXIT_FAILURE);
+    }
+    return res;
+}
 
-/* ########################  Structs  ######################*/
-
-/* struct per rappresentare il messaggio da inviare al server */
-typedef struct to_send{
-    char filepath[MAXPATH];
-    char directory[MAXNAME];
-    int o_lock;
-    int o_create;
-}to_send;
+/* ########################  STRUCTS E GLOBALS   ######################*/
 
 
 /* socket address*/
@@ -101,7 +116,7 @@ int openConnection(const char* sockname, int msec, const struct timespec abstime
     if(conn_set==1){//se ho gia una connessione in corso
         perror("connessione gia stabilita con \n");
         errno=ENOENT;
-        return -1;
+        return ERROR;
     }
     else{//se connessione puo avvenire
 
@@ -121,16 +136,17 @@ int openConnection(const char* sockname, int msec, const struct timespec abstime
                 msleep(WAIT_CONN_TRY);
                 time+=(WAIT_CONN_TRY/1000.0);
             }
-            else return -1;
+            else return ERROR;
         }
 
         n_op++;
+        /* Setto il flag per indicare lo stato della connessione */
         if(isconnected==0){
-            if(p_flag)printf("connessione con %d effettuata\n",fd_socket);
+            if(p_flag)printf("connessione con socketfd %d effettuata\n",fd_socket);
             conn_set=1;
-            return 0;
+            return SUCCESS;
         }
-        else return -1;
+        else return ERROR;
     }
 
 
@@ -143,15 +159,17 @@ int openConnection(const char* sockname, int msec, const struct timespec abstime
  *  0 se Ok, -1 in caso di errore, setta errno opportunamente
  */
 int closeConnection(const char* sockname){
+    /* Gestione Errore */
     if(close(fd_socket)!=0){
+        errno=EPERM;
         perror("errore chiusura socket\n");
-        return -1;
+        return ERROR;
     }
     else{
         int operation=TURNOFF;
         writen(fd_socket,&operation,sizeof(int));
-        if(p_flag)printf("%s CLOSE CONNECTION\n Connessione Chiusa%s",opseparator,opseparator);
-        return 0;
+        if(p_flag)printf("%s CLOSE CONNECTION\n Connessione Chiusa\n%s",opseparator,opseparator);
+        return SUCCESS;
     }
 }
 /**
@@ -162,54 +180,41 @@ int closeConnection(const char* sockname){
  */
 int openFile(char * pathname, int flags){
     static int n_op=1;
-    if(p_flag)printf("%s %d OPENFILE flags %d\n",opseparator,n_op,flags);
+    if(p_flag)printf("%s %d OPENFILE \n",opseparator,n_op);
     n_op++;
     if(conn_set==1){
         int replace=-1;
         int reply=-1;
-
+        /* Se non ricevo flags sconosciuti */
         if(flags==O_LOCK || flags== O_CREATE || flags==O_BOTH || flags==NO_FLAG){
-            
+            /* Parso il nome del File */
             char pathname_to_parse[MAXPATH];
             strcpy(pathname_to_parse, pathname);
             char filename[MAXNAME];
             parseFilename(pathname_to_parse, filename);
             
+            /* Scrivo al Server i dati per gestire l'operazione */
             int operation=OPEN;
             int pathlen=strlen(filename);
             pathlen++;
             fflush(stdout);
-            if( (writen(fd_socket,&operation,sizeof(int)))<= 0){
-                perror("writen non riuscita OPEN");
-                exit(EXIT_FAILURE);
-            }
-            if( (writen(fd_socket,&flags,sizeof(int)))<= 0){
-                perror("writen non riuscita OPEN");
-                exit(EXIT_FAILURE);
-            }
-            if( (writen(fd_socket,&pathlen,sizeof(int)))<= 0){
-                perror("writen non riuscita OPEN");
-                exit(EXIT_FAILURE);
-            }
-            if( (writen(fd_socket,filename,pathlen))<= 0){
-                perror("writen non riuscita OPEN");
-                exit(EXIT_FAILURE);
-            }
+            d_writen(fd_socket,&operation,sizeof(int));
+            d_writen(fd_socket,&flags,sizeof(int));
+            d_writen(fd_socket,&pathlen,sizeof(int));
+            d_writen(fd_socket,filename,pathlen);
         }
-        else{
+        else{/* Altrimenti Fallisco */
+            errno=EINVAL;
             perror("flag non riconosciuto");
             exit(EXIT_FAILURE);
         }
 
         /*Caso in cui ho avuto un rimpiazzamento */
-        if( (readn(fd_socket,&replace,sizeof(int)))<= 0){
-                perror("readn non riuscita OPEN");
-                exit(EXIT_FAILURE);
-        }
-        printf("replace letta: %d\n",replace);
+        d_readn(fd_socket,&replace,sizeof(int));
+
         /* Se devo rimpiazzare un file */
         if(replace==1){
-            printf("OPENFILE RIMPIAZZAMENTO\n");
+            if(p_flag)printf("OPENFILE RIMPIAZZAMENTO\n");
             DIR *dir = NULL; //cartella dove salvare file 
             int file_to_store_len = 0; //lunghezza del file ricevuto
             int file_to_store_name_len = 0; //lunghezza del nome file ricevuto
@@ -218,29 +223,26 @@ int openFile(char * pathname, int flags){
             char file_to_store_name[MAXNAME]; //nome del file ricevuto 
             char* file_to_store_content = NULL; //contenuto del file ricevuto
             
-            printf("debug1\n");
-
-            if(strlen(overload_dir_name)>0){//se la cartella esiste  la apro
+            /* Se la cartella Esiste la apro */
+            if(strlen(overload_dir_name)>0){
                 dir = opendir(overload_dir_name);
                 if(!dir) {
+                    errno=ENOTDIR;
                     perror("APPEND: Errore apertura directory");
                     return ERROR;
                 }
             }
-            printf("debug2\n");
         
-            /* Leggo la dimensione del file espulso, quando ho finito (0) mi fermo*/
-            readn(fd_socket, &file_to_store_len, sizeof(int));
-            printf("debug3\n");
-
+            /* Leggo la dimensione del file espulso */
+            d_readn(fd_socket, &file_to_store_len, sizeof(int));
+            /* Se il file non e' vuoto */
             if(file_to_store_len != 0){
-                 //Quando ricevo 0 esco
-                file_to_store_content = malloc(file_to_store_len*sizeof(char));        //TODO CONTROLLO SU STORED DATA controllare che non sia null
+                file_to_store_content = malloc(file_to_store_len*sizeof(char));        
                 /* leggo  lunghezza nome file, nome file, contenuto */
-                readn(fd_socket, &file_to_store_name_len, sizeof(int));
-                readn(fd_socket, file_to_store_name, file_to_store_name_len);
-                readn(fd_socket, file_to_store_content, file_to_store_len);    
-                printf("filetostorelen: %d filetostorenamelen %d filetostorename: %s filetostorecontent: %s\n",file_to_store_len,file_to_store_name_len,file_to_store_name,file_to_store_content);
+                d_readn(fd_socket, &file_to_store_name_len, sizeof(int));
+                d_readn(fd_socket, file_to_store_name, file_to_store_name_len);
+                d_readn(fd_socket, file_to_store_content, file_to_store_len);    
+                //printf("filetostorelen: %d filetostorenamelen %d filetostorename: %s filetostorecontent: %s\n",file_to_store_len,file_to_store_name_len,file_to_store_name,file_to_store_content);
                 file_to_store_name[file_to_store_name_len] = '\0';
                 //Se cartella dirname esiste salvo dentro
                 if(overload_dir_name != NULL && dir ) {
@@ -248,7 +250,6 @@ int openFile(char * pathname, int flags){
                     strcpy(fullpath, overload_dir_name);
                     if (fullpath[strlen(fullpath)-1] != '/') strcat(fullpath, "/");
                     strcat(fullpath, file_to_store_name);
-                    printf("complete path %s\n",fullpath);
                     /* Creo e scrivo il file ricevuto */
                     FILE* file_to_store = fopen(fullpath, "w");
                     if(!file_to_store){
@@ -263,37 +264,31 @@ int openFile(char * pathname, int flags){
                     if(file_to_store)
                         fclose(file_to_store);
                 }
-                //if(file_to_store_content) free(file_to_store_content);
                 if(file_to_store_content) free(file_to_store_content);
 
                 if(dir) closedir(dir);
             }
         }
-            
-
-        /*if( (readn(fd_socket,&reply,sizeof(int)))<= 0){
-                    printf("REPLY dentrlo \n");
-
-                perror("readn non riuscita OPEN");
-                exit(EXIT_FAILURE);
-        }9*/
-        readn(fd_socket,&reply,sizeof(int));
-        printf("REPLY %d\n",reply);
+        /* Leggo la risposta del Server */
+        d_readn(fd_socket,&reply,sizeof(int));
 
         if(reply==SUCCESS){
             if(p_flag)printf("file: %s  aperto con successo\n%s\n",pathname,opseparator);
             return SUCCESS;
         }
         else if(reply==EBUSY){
+            errno=EBUSY;
             if(p_flag)printf("file: %s non aperto,permessi non acquisiti\n%s\n",pathname,opseparator);
             return EBUSY;
         }
         else{
+            errno=EINVAL;
             if(p_flag)printf("file: %s non aperto,fallito\n%s\n",pathname,opseparator);
             return ERROR;
         }
     }
     else{
+        errno=EIO;
         perror("connessione non aperta con nessun server");
         exit(EXIT_FAILURE);
     }
@@ -318,32 +313,20 @@ int readFile(const char* pathname, void** buf, size_t* size){
     int pathlen=strlen(pathname);
     int reply=-1;
     /* Scrittura al server dell'operazione */
-    if( (writen(fd_socket,&opcode,sizeof(int)))<= 0){
-        perror("writen non riuscita READ");
-        exit(EXIT_FAILURE);
-    }
-    if( (writen(fd_socket,&pathlen,sizeof(int)))<= 0){
-        perror("writen non riuscita READ");
-        exit(EXIT_FAILURE);
-    }
-    if( (writen(fd_socket,pathname,pathlen))<= 0){
-        perror("writen non riuscita READ");
-        exit(EXIT_FAILURE);
-    }
+    d_writen(fd_socket,&opcode,sizeof(int));
+    d_writen(fd_socket,&pathlen,sizeof(int));
+    d_writen(fd_socket,pathname,pathlen);
     /* Lettura della risposta */
-    /*if((readn(fd_socket,&reply,sizeof(int)))<=0){
-            perror("readn non riuscita READ");
-            exit(EXIT_FAILURE);
-    }*/
-    int returned=readn(fd_socket,&reply,sizeof(int));
+    d_readn(fd_socket,&reply,sizeof(int));
     
-    printf("REPLY %d returned %d\n",reply,returned);
     if(reply>0){
-        readn(fd_socket,size,sizeof(int));
+        d_readn(fd_socket,size,sizeof(int));
         (*buf)=malloc((int)*size);
-        readn(fd_socket,*buf, *size);
-        printf("size %d buf %s\n",*size,*buf);
+        d_readn(fd_socket,*buf, *size);
         return SUCCESS;
+    }else{
+        errno=EINVAL;
+        return ERROR;
     }
 
 
@@ -369,12 +352,12 @@ int readNFiles(int N, const char* dirname){
     char pathname[MAXPATH];
 
     /* mando al server il numero di file da leggere */
-    writen(fd_socket,&opcode,sizeof(int));    
-    writen(fd_socket,&N,sizeof(int));
-    if(N==0){
-        readn(fd_socket,&N,sizeof(int));
-    }
-
+    d_writen(fd_socket,&opcode,sizeof(int));    
+    d_writen(fd_socket,&N,sizeof(int));
+    d_readn(fd_socket,&N,sizeof(int));
+    if(p_flag)printf("LEGGENDO %d FILES\n",N);
+   
+    /* Se la cartella e' stata dichiarata  */
     if(strlen(dirname)>0){
         /* Variabili per la scrittura dentro la cartella */
 
@@ -386,6 +369,7 @@ int readNFiles(int N, const char* dirname){
         /* Apro la Cartella se E */
         dir = opendir(dirname);
         if(!dir) {
+            errno=ENOTDIR;
             perror("READNFILES: Errore apertura directory");
             return -1;
         }
@@ -393,29 +377,28 @@ int readNFiles(int N, const char* dirname){
         for(int i=0;i<N;i++){ 
             
             /*Leggo la dimensione del file che il server mi vuole inviare */
-            readn(fd_socket,&content_size,sizeof(int));
+            d_readn(fd_socket,&content_size,sizeof(int));
             
             /*se dimensione e 0 mi fermo */
             if(content_size==0)
                 break;
 
-            readn(fd_socket,&filename_len,sizeof(int));
-            readn(fd_socket,filename,filename_len);
+            d_readn(fd_socket,&filename_len,sizeof(int));
+            d_readn(fd_socket,filename,filename_len);
             content=malloc(content_size*sizeof(char));       
             /* Leggo il file */
-            readn(fd_socket,content,content_size);
+            d_readn(fd_socket,content,content_size);
             fflush(stdout);
             fflush(stderr);
-            printf("\nLetto dal server:\nfile:%s\n%s\n\n",filename,content);
+            if(p_flag)printf("\nLetto dal server:\nfile:%s\n%s\n\n",filename,content);
             
             
-            
+            /* Se dirname settata,creo il file e scrivo al suo interno */
             if(dirname != NULL && dir ){
                 char fullpath[MAXPATH + MAXNAME] = "";
                 strcpy(fullpath, dirname);
                 if (fullpath[strlen(fullpath)-1] != '/') strcat(fullpath, "/");
                 strcat(fullpath, filename);
-                printf("fullpath %s\n",fullpath);
                 /* Creo e scrivo il file ricevuto */
                 FILE* file_to_store = fopen(fullpath, "wb");
                 if(!file_to_store){
@@ -439,26 +422,26 @@ int readNFiles(int N, const char* dirname){
     else{/* Altrimenti se la directory non e stata esplicitata */
         for(int i=0;i<N;i++){
             /*Leggo la dimensione del file che il server mi vuole inviare */
-            readn(fd_socket,&content_size,sizeof(int));
+            d_readn(fd_socket,&content_size,sizeof(int));
             fflush(stdout);
             if(content_size==0)//se la dimensione e 0 esco dal for 
                 break;
-            readn(fd_socket,&filename_len,sizeof(int));
-            readn(fd_socket,filename,filename_len);
+            d_readn(fd_socket,&filename_len,sizeof(int));
+            d_readn(fd_socket,filename,filename_len);
             content=malloc(content_size*sizeof(char));            
             
             /* Leggo il file */
-            readn(fd_socket,content,content_size);
+            d_readn(fd_socket,content,content_size);
                        
             fflush(stdout);
             fflush(stderr);
             /* Stampo il file e libero la memoria */
-            printf("Letto dal server:\nfile:%s\n%s\n\n",filename,content);
+            if(p_flag)printf("Letto dal server:\nfile:%s\n%s\n\n",filename,content);
             fflush(stdout);
             fflush(stderr); 
             free(content);        
         }
-            
+    return SUCCESS;      
     }
           
 }
@@ -480,7 +463,12 @@ int writeFile(const char* pathname, const char* dirname){
         appendToFile(pathname, buf, size, dirname);
         free(buf);
     }
-    printf("%s\n",opseparator);
+    else{
+        errno=EINVAL;
+        perror("errore lettura content file\n");
+        return ERROR;
+    }
+    if(p_flag)printf("%s\n",opseparator);
     return SUCCESS;
 }
 
@@ -534,59 +522,43 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
     if(pathname_len > MAXNAME){
         perror("AppendFile: pathname troppo lungo");
         errno = ENAMETOOLONG;
-        return -1;
+        return ERROR;
     }
     if(pathname_len <= 0){
         perror("AppendFile: pathname troppo corto");
         errno = EINVAL;
-        return -1;
+        return ERROR;
     }
     int sizetosend=size;
 
 
     /* Invio Dati al Server */
-    if( writen(fd_socket, &opcode, sizeof(int))<=0){
-        perror("writen non riuscita APPEND");
-        exit(EXIT_FAILURE);
-    }
-    if( writen(fd_socket, &pathname_len, sizeof(int))<=0){
-        perror("writen non riuscita APPEND");
-        exit(EXIT_FAILURE);
-    }
-    if( writen(fd_socket, filename, pathname_len)<=0){
-        perror("writen non riuscita APPEND");
-        exit(EXIT_FAILURE);
-    }
-
-    if( writen(fd_socket, &sizetosend, sizeof(int))<=0){
-        perror("writen non riuscita APPEND");
-        exit(EXIT_FAILURE);
-    }
-    if( writen(fd_socket, buf, size)<=0){
-        perror("writen non riuscita APPEND");
-        exit(EXIT_FAILURE);
-    }
+    d_writen(fd_socket, &opcode, sizeof(int));
+    d_writen(fd_socket, &pathname_len, sizeof(int));
+    d_writen(fd_socket, filename, pathname_len);
+    d_writen(fd_socket, &sizetosend, sizeof(int));
+    d_writen(fd_socket, buf, size);
      
     /* Aspetto i file esplulsi,se esistono */   
     int replace=0;
-    readn(fd_socket,&replace,sizeof(int));
-    printf("APPEND CLIENT REPLACE %d\n",replace);
+    d_readn(fd_socket,&replace,sizeof(int));
     if(replace==1){
         if(strlen(dirname)>0){//se la cartella esiste  la apro
                 dir = opendir(dirname);
                 if(!dir) {
+                    errno=ENOTDIR;
                     perror("APPEND: Errore apertura directory");
                     return ERROR;
                 }
         }
     
         /* Leggo la dimensione del file espulso, quando ho finito (0) mi fermo*/
-        readn(fd_socket, &file_to_store_len, sizeof(int));
-        file_to_store_content = malloc(file_to_store_len*sizeof(char));        //TODO CONTROLLO SU STORED DATA controllare che non sia null
+        d_readn(fd_socket, &file_to_store_len, sizeof(int));
+        file_to_store_content = malloc(file_to_store_len*sizeof(char));        
         /* leggo  lunghezza nome file, nome file, contenuto */
-        readn(fd_socket, &file_to_store_name_len, sizeof(int));
-        readn(fd_socket, file_to_store_name, file_to_store_name_len);
-        readn(fd_socket, file_to_store_content, file_to_store_len) <= 0;    
+        d_readn(fd_socket, &file_to_store_name_len, sizeof(int));
+        d_readn(fd_socket, file_to_store_name, file_to_store_name_len);
+        d_readn(fd_socket, file_to_store_content, file_to_store_len) <= 0;    
         file_to_store_name[file_to_store_name_len] = '\0';
         //Se cartella dirname esiste salvo dentro
         if(dirname != NULL && dir ) {
@@ -594,7 +566,6 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
             strcpy(fullpath, dirname);
             if (fullpath[strlen(fullpath)-1] != '/') strcat(fullpath, "/");
             strcat(fullpath, file_to_store_name);
-            printf("complete path %s\n",fullpath);
             /* Creo e scrivo il file ricevuto */
             FILE* file_to_store = fopen(fullpath, "wb");
             if(!file_to_store){
@@ -618,10 +589,12 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
     }
     
     /* Aspetto risposta dal Server */
-    readn(fd_socket, &response, sizeof(int));
-    printf("APPEND RESPONSE %d\n",response);
+    d_readn(fd_socket, &response, sizeof(int));
+    if(p_flag)printf("APPEND RESPONSE %d\n",response);
     if(response != 0){
+        errno=EINVAL;
         perror("Operazione APPEND non riuscita\n");
+        return ERROR;
     }
     else{
         if(p_flag)(printf("Operazione Append %s Avvenuta con Successo\n%s",pathname,opseparator));
@@ -642,7 +615,6 @@ int lockFile(const char* pathname){
     static int n_op=1;
     if(p_flag)(printf("%s %d LOCKFILE\n",opseparator,n_op));
     n_op++;
-    printf("Dentro lockFile\n");
     fflush(stdout);
     if(conn_set==1){
         int opcode=LOCK;
@@ -657,37 +629,28 @@ int lockFile(const char* pathname){
         filenamelen=strlen(filename);
         while(done==0){
             /* Invio Operazione al Server */
-            if( writen(fd_socket, &opcode, sizeof(int))<=0){
-                perror("writen non riuscita LOCK");
-                exit(EXIT_FAILURE);
-            }
-            if( writen(fd_socket, &filenamelen, sizeof(int))<=0){
-                perror("writen non riuscita LOCK");
-                exit(EXIT_FAILURE);
-            }
-            if( writen(fd_socket, filename, filenamelen)<=0){
-                perror("writen non riuscita LOCK");
-                exit(EXIT_FAILURE);
-            }
-            if( readn(fd_socket, &ret, sizeof(int))<=0){
-                perror("writen non riuscita LOCK");
-                exit(EXIT_FAILURE);
-            }
+            d_writen(fd_socket, &opcode, sizeof(int));
+            d_writen(fd_socket, &filenamelen, sizeof(int));
+            d_writen(fd_socket, filename, filenamelen);
+            d_readn(fd_socket, &ret, sizeof(int));
             if(ret==EBUSY){
-                printf("Operazione Lock su %s non avvenuta, lock occupata, riprovo\n",filename);
-                usleep(wait_time);
+                if(p_flag)printf("Operazione Lock su %s non avvenuta, lock occupata, riprovo\n",filename);
+                usleep(200);
             }
             else{
                 if(ret==SUCCESS)
-                    printf("Operazione Lock su %s avvenuta con Successo\n",filename);
+                    if(p_flag)printf("Operazione Lock su %s avvenuta con Successo\n",filename);
                 done=1;
             }
         }
         if(p_flag)(printf("%s\n",opseparator));
 
         return ret;
-        
-
+    }
+    else{
+        errno=EIO;
+        perror("socket non connessa");
+        return ERROR;
     }
     
 }
@@ -701,9 +664,8 @@ int lockFile(const char* pathname){
  */
 int unlockFile(const char* pathname){
     static int n_op=1;
-    if(p_flag)(printf("%s %d LOCKFILE\n",opseparator,n_op));
+    if(p_flag)(printf("%s %d UNLOCK FILE\n",opseparator,n_op));
     n_op++;
-    printf("Dentro unlockFile\n");
     if(conn_set==1){
         int opcode=UNLOCK;
         int ret=0;
@@ -715,30 +677,24 @@ int unlockFile(const char* pathname){
         parseFilename(pathname_to_parse, filename);
         filenamelen=strlen(filename);
             /* Invio Operazione al Server */
-            if( writen(fd_socket, &opcode, sizeof(int))<=0){
-                perror("writen non riuscita UNLOCK");
-                exit(EXIT_FAILURE);
-            }
-            if( writen(fd_socket, &filenamelen, sizeof(int))<=0){
-                perror("writen non riuscita UNLOCK");
-                exit(EXIT_FAILURE);
-            }
-            if( writen(fd_socket, filename, filenamelen)<=0){
-                perror("writen non riuscita UNLOCK");
-                exit(EXIT_FAILURE);
-            }
-            if( readn(fd_socket, &ret, sizeof(int))<=0){
-                perror("writen non riuscita UNLOCK");
-                exit(EXIT_FAILURE);
-            }
-            printf("RET value %d\n",ret);
+            d_writen(fd_socket, &opcode, sizeof(int));
+            d_writen(fd_socket, &filenamelen, sizeof(int));
+            d_writen(fd_socket, filename, filenamelen);
+            d_readn(fd_socket, &ret, sizeof(int));
+            printf("Operazione Unlock su %s avvenuta con Successo\n",filename);
+
             if(p_flag)(printf("%s\n",opseparator));
 
             return ret;
-        }
+    }
+    else{
+        errno=EIO;
+        perror("socket non connessa");
+        return ERROR;
+    }
         
 
-    }
+}
 
 
 /**
@@ -765,33 +721,14 @@ int closeFile(const char* pathname){
         fflush(stdout);
 
         /* Scrittura al server dell'operazione */
-        if( (writen(fd_socket,&operation,sizeof(int)))<= 0){
-            perror("writen non riuscita CLOSE");
-            exit(EXIT_FAILURE);
-        }
-        if( (writen(fd_socket,&pathlen,sizeof(int)))<= 0){
-            perror("writen non riuscita CLOSE");
-            exit(EXIT_FAILURE);
-        }
-        if( (writen(fd_socket,filename,pathlen))<= 0){
-            perror("writen non riuscita CLOSE");
-            exit(EXIT_FAILURE);
-        }
-        printf("REPLY CLOSE FILE prima %d\n",reply);
-
+        d_writen(fd_socket,&operation,sizeof(int));
+        d_writen(fd_socket,&pathlen,sizeof(int));
+        d_writen(fd_socket,filename,pathlen);
         /* Lettura della risposta */
-        /*if( (readn(fd_socket,&reply,sizeof(int)))<= 0){
-                perror("readn non riuscita CLOSE");
-                exit(EXIT_FAILURE);
-        }*/
-        int letti=readn(fd_socket,&reply,sizeof(int));
-        printf("REPLY CLOSE FILE intermedio %d letti %d\n",reply,letti);
-
-       /* if( (readn(fd_socket,&reply,sizeof(int)))<= 0){
-                perror("readn non riuscita CLOSE");
-                exit(EXIT_FAILURE);
-        }*/
         
+        int letti=d_readn(fd_socket,&reply,sizeof(int));
+
+      
         if(reply==SUCCESS){
             if(p_flag)printf("\nfile: %s  chiuso con successo\n%s",pathname,opseparator);
             return SUCCESS;
@@ -833,24 +770,12 @@ if(conn_set==1){
         fflush(stdout);
 
         /* Scrittura al server dell'operazione */
-        if( (writen(fd_socket,&operation,sizeof(int)))<= 0){
-            perror("writen non riuscita REMOVE");
-            exit(EXIT_FAILURE);
-        }
-        if( (writen(fd_socket,&pathlen,sizeof(int)))<= 0){
-            perror("writen non riuscita REMOVE");
-            exit(EXIT_FAILURE);
-        }
-        if( (writen(fd_socket,filename,pathlen))<= 0){
-            perror("writen non riuscita REMOVE");
-            exit(EXIT_FAILURE);
-        }
+        d_writen(fd_socket,&operation,sizeof(int));
+        d_writen(fd_socket,&pathlen,sizeof(int));
+        d_writen(fd_socket,filename,pathlen);
         
         /* Lettura della risposta */
-        if( (readn(fd_socket,&reply,sizeof(reply)))<= 0){
-                perror("readn non riuscita REMOVE");
-                exit(EXIT_FAILURE);
-        }
+        d_readn(fd_socket,&reply,sizeof(reply));
 
 
         if(reply==SUCCESS){

@@ -12,7 +12,8 @@
 #include<dirent.h>
 #include<sys/stat.h>
 
-/*Const*/
+/* ############################### COSTANTI ################################*/
+
 #define TRUE 1
 #define MAXNAME 100
 #define MAXARGUMENTLENGHT 256
@@ -25,9 +26,9 @@
 #define O_BOTH 127 //flag per selezionare entrambi i flag
 #define NO_FLAG 128 //flag nullo
 
-/*Funzioni Supporto*/
+/* ############################### FUNZIONI SUPPORTO ################################*/
 
-/* msleep(): Sleep for the requested number of milliseconds. */
+/* Funzione per fare una sleep  di msec millisecondi  */
 static int msleep(long msec){
     struct timespec ts;
     int res;
@@ -46,79 +47,42 @@ static int msleep(long msec){
 }
 
 
-
-/*  read per evitare scritture parziali */
-/*static int readn(long fd, void *buf, size_t size) {
-    size_t left = size;
-    int r;
-    char *bufptr = (char*)buf;
-    while(left>0) {
-	if ((r=read((int)fd ,bufptr,left)) == -1) {
-	    if (errno == EINTR) continue;
-	    return -1;
-	}
-	if (r == 0) return 0;   // EOF
-        left    -= r;
-	bufptr  += r;
-    }
-    return size;
-}*/
-
-
-/*  writen per evitare scritture parziali 3e parti*/ 
-/*static  int writen(long fd, void *buf, size_t size) {
-    size_t left = size;
-    int r;
-    char *bufptr = (char*)buf;
-    while(left>0) {
-	if ((r=write((int)fd ,bufptr,left)) == -1) {
-	    if (errno == EINTR) continue;
-	    return -1;
-	}
-	if (r == 0) return 0;  
-        left    -= r;
-	bufptr  += r;
-    }
-    return 1;
-}
-
 /* Legge il contenuto di un file */
 static int readFileContent(char* pathname, void** buf, size_t* size){
     if(!pathname || !buf || !size) {
-        fprintf(stderr, "\n1Client: errore lettura contenuto file %s. Info sull'errore: %s\n", pathname,
+        fprintf(stderr, "\n1Client: errore lettura contenuto file %s Info sull'errore: %s\n", pathname,
                 strerror(errno));
         errno = EINVAL;
         return -1;
     }
+    /* Apre il file */
     FILE* file;
     file = fopen(pathname, "rb+");
     if(!file){
-        fprintf(stderr, "\n2Client: errore lettura contenuto file %s. Info sull'errore: %s\n", pathname,
-                strerror(errno));
+        fprintf(stderr, "\n2Client: errore lettura contenuto file %s Info sull'errore: %s\n", pathname,
+        strerror(errno));
         return -1;
     }
+    /* Controlli sul file */
     struct stat sb;
     if (stat(pathname, &sb) == -1){
-        fprintf(stderr, "\n3Client: errore lettura statistiche file %s. Info sull'errore: %s\n", pathname,
-                strerror(errno));
+        fprintf(stderr, "\n3Client: errore lettura statistiche file %s Info sull'errore: %s\n", pathname,
+        strerror(errno));
         return -1;
     }
     *size = sb.st_size;
     if(*size <= 0){
         errno = ENODATA;
-        fprintf(stderr, "\n4Client: errore lettura contenuto file %s. Info sull'errore: %s\n", pathname,
-                strerror(errno));
+        fprintf(stderr, "\n4Client: errore lettura contenuto file %s Info sull'errore: %s\n", pathname,
+        strerror(errno));
         return -1;
     }
-
+    /* buf e scrittura sul buffer*/
     *buf = malloc(*size);
     if(!*buf){
         perror("\nreadFileContent: Errore allocazione memoria\n");
         exit(EXIT_FAILURE);
     }
-    /*while (fread(*buf, 1, *size, file) > 0){
-
-    }*/
     fread(*buf, 1, *size, file);
     fclose(file);
     return 0;

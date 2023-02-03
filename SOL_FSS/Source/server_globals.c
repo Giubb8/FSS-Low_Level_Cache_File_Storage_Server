@@ -13,7 +13,7 @@ int fd_socket=-1;//file descriptor della socket
 int fd_conn=-1;//file descriptor della connessione 
 char * separator="~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
 char * opseparator="-------------------------------------------------------------------------------------------\n";
-int p_flag=1; //flag per abilitare le stampe
+int p_flag=0; //flag per abilitare le stampe
 FILE * filelog; //file descriptor del file di log
 char * logstring; //stringa da passare al file di log
 
@@ -28,3 +28,4 @@ tolog_struct tolog;
 int p_client=0;//int per memorizzare il numero massimo di client connessi contemporaneamente
 pthread_mutex_t p_client_mutex=PTHREAD_MUTEX_INITIALIZER;//mutex associata
 pthread_mutex_t tolog_struct_mutex=PTHREAD_MUTEX_INITIALIZER;//mutex associata alla struttura da loggare
+

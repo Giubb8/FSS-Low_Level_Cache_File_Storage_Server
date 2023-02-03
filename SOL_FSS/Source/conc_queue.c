@@ -116,17 +116,29 @@ int conc_queue_isEmpty(conc_queue* queue) {
 int queue_dealloc_full(conc_queue* queue) {
     if(!queue) {errno=EINVAL; return ERR;}     // Uninitialized queue
     if(!(queue->head)) {errno=EINVAL; return ERR;}     // Uninitialized queue
-
+    //printf("DENTRO head next filenamequeue %s\n",queue->head->next->data);
+    /*if(queue->head==NULL){
+        printf("head null\n");
+    }
+    if(queue->head->next==NULL){
+        printf("next null\n");
+    }
+    /*if(queue->head->next->data==NULL){
+        printf("data null\n");
+    }*/
     int temperr;
     void* tempres=NULL;
-    
-    if(!((queue->head)->next)) {        // For an empty queue, deallocating its head node and pointer suffices
-        if((tempres=conc_node_destroy(queue->head))) {return ERR;}     // errno already set by the call
+
+    if(!((queue->head)->next)) {// For an empty queue, deallocating its head node and pointer suffices   
+        if((tempres=conc_node_destroy(queue->head))) {
+            return ERR;
+        }     // errno already set by the call
+
         free(tempres);
         temperr=pthread_mutex_destroy(&(queue->queue_mtx));
-        if(temperr) {errno=temperr; return ERR;}
+        if(temperr) {errno=temperr; printf("mutex errno %d\n",errno); return ERR;}
         temperr=pthread_cond_destroy(&(queue->queue_cv));
-        if(temperr) {errno=temperr; return ERR;}
+        if(temperr) {errno=temperr; printf("cond\n"); return ERR;}
         free(queue);
         return SUCCESS;
     }
@@ -136,13 +148,16 @@ int queue_dealloc_full(conc_queue* queue) {
     while(aux1!=NULL) {
         aux2=aux1;
         aux1=aux1->next;
-        if(!(tempres=conc_node_destroy(aux2))) {return ERR;}     // errno already set by the call
+        if(!(tempres=conc_node_destroy(aux2))) {
+            return ERR;}     // errno already set by the call
         free(tempres);
     }
 
-    temperr=pthread_mutex_destroy(&(queue->queue_mtx));
+    temperr=pthread_mutex_destroy(&(queue->queue_mtx));    
+
     if(temperr) {errno=temperr; return ERR;}
     temperr=pthread_cond_destroy(&(queue->queue_cv));
+
     if(temperr) {errno=temperr; return ERR;}
     free(queue);
     return SUCCESS;

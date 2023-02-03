@@ -1,1 +1,1 @@
-12;10;4024;mysocket;
+8;100;32;mysocket;

@@ -13,28 +13,22 @@ struct sockaddr_un{
 };
 
 
-tolog_struct tolog_init(){
-    tolog_struct tstruct;
-    tstruct.clientserved_tolog=0;
-    tstruct.maxcapacity_tolog=0;
-    tstruct.maxconnection_tolog=0;
-    tstruct.maxnumfile_tolog=0;
-    tstruct.replaceop_tolog=0;
-    return tstruct;
-}
-
 
 /*####################  GLOBALS DEL MAIN  #########################*/
 filestats stats; //struttura per contenere i dati da inserire nel file di log
 struct sockaddr_un sa; //socket
 
 
+
 int main(int argc,char *argv[]){    
-    /* Inizializzazione */
+
+    /*#####################  INIZIALIZZAZIONE  #########################*/
+
     /* Setting configurazione iniziale file config*/
-    initconfig(argc,CONFIG_PATH);
+    initconfig(argc,argv[1]);
     tolog=tolog_init();
-    printf(" tolog: %d %d %d %d %d \n",tolog.clientserved_tolog,tolog.maxcapacity_tolog,tolog.maxconnection_tolog,tolog.maxnumfile_tolog,tolog.replaceop_tolog);
+
+    /*Creo la lista dei messaggi per il thread logger*/
     log_queue=conc_queue_create(NULL);
 
     /*Dichiarazioni variabili e strutture*/
@@ -73,34 +67,38 @@ int main(int argc,char *argv[]){
     /*####################  CREAZIONE DEL THREAD DISPATCHER  #####################*/
     if( (error=pthread_create(&dispatch_tid,NULL, &dispatcher,&fd_socket)) !=0){//l'accettazione dei client viene effettutata da un thread separato,il dispatcher.
         errno=error;
-        perror("\nCreating dispatcher thread: ");
+        perror("\nErrore Creazione Dispatcher");
         exit(EXIT_FAILURE);
     }
-    if( (error=pthread_create(&logger_tid,NULL, &logger_func,NULL)) !=0){//l'accettazione dei client viene effettutata da un thread separato,il dispatcher.
+    if( (error=pthread_create(&logger_tid,NULL, &logger_func,NULL)) !=0){
         errno=error;
-        perror("\nCreating dispatcher thread: ");
+        perror("\nErrore Creazione Logger");
         exit(EXIT_FAILURE);
     }
+
     /*###########################  CHIUSURA DEL PROGRAMMA   ##############################*/
     if( (error=pthread_join(dispatch_tid,NULL)) !=0){//JOIN  è Bloccante
         errno=error;
-        perror("\nJoining dispatcher thread: ");
+        perror("\nJoinando il dispatcher");
         exit(EXIT_FAILURE);
     }
-    printf("RITORNATO DA DISPATCH,MOLTO BENE\n");
+    m_signal(&(log_queue->queue_cv));//segnalo al logger che ho finito 
     if( (error=pthread_join(logger_tid,NULL)) !=0){//JOIN  è Bloccante
         errno=error;
-        perror("\nJoining dispatcher thread: ");
+        perror("\nJoinando il logger ");
         exit(EXIT_FAILURE);
     }
     /*##############################  PULIZIA DELLA MEMORIA E UNLINK ############################*/
-    close(fd_socket);//TODO forse se metto shutdown non va,edit: sembra andare
+    if(close(fd_socket)==ERROR){
+        printf("errno: %d",errno);
+        perror("close fallita\n");
+        exit(EXIT_FAILURE);
+    }
     unlink(socketname);    
     fclose(filelog);
     destroy_cache(mycache);
     queue_dealloc_full(log_queue);
-    printf("Finito tutto\n");
-    //exit(EXIT_SUCCESS);
+    printf("SERVER HA CONCLUSO\n");
     return 0;
 }
 

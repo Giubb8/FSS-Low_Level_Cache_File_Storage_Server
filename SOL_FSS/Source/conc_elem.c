@@ -20,6 +20,7 @@ void* conc_node_destroy(conc_node node) {
     void* tempdata;
 
     tempdata=node->data;
+    //printf("tempdata %s",(char*)tempdata);
     node->next=NULL;
     temperr=pthread_mutex_destroy(&(node->node_mtx));
     if(temperr) {errno=temperr; return NULL;}

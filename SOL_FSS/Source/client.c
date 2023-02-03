@@ -6,7 +6,7 @@
 
 #define ERROR -1
 #define SUCCESS 0
-/* ################### HANDLER FUNCTIONS #################### */
+/* ################### PROTOTIPI HANDLER FUNCTIONS #################### */
 
 void handle_o();
 void handle_p();
@@ -28,15 +28,14 @@ int isDir();
 
 
 
-/* ################### MAIN ################################## */
+/* ######################################## MAIN ################################## */
 
 
 int main(int argc, char *argv[]){
-    /*TODO VEDERE SE CONTROLLI SONO SUFFICIENTI*/
     if(argc<1){
             perror("input insufficienti");
             exit(EXIT_FAILURE);
-        }
+    }
     /*Variabili Interne Client*/
     struct timespec timer;
     if( clock_gettime(CLOCK_REALTIME, &timer) == -1)
@@ -154,20 +153,28 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
+
+/* ######################################## HANDLERS ################################## */
+
+
+
+/* Handler per la scrittura di file singoli*/
 void handle_W(char * filesnames){
-    /*TODO fare i controlli su filesnames*/
+    if(filesnames==NULL){
+        perror("operazione W filesnames null");
+        exit(EXIT_FAILURE);
+    }
     char* token = strtok(filesnames, ",");
     while (token != NULL) {
         if ( openFile(token,O_BOTH) != 0 ){
-            // per fare la append
+            /* Se Fallisco ad Aprire il File con il flag per la creazione riprovo senza */
             if (openFile(token,NO_FLAG) == 0){
                 writeFile(token,overload_dir_name);
                 closeFile(token);
             }else{
-                printf("\nErrore nell'apertura del file %s\n", token);//TODO gestire errori
+                printf("\nErrore nell'apertura del file %s\n", token);
             }
         }else{
-            printf("Ramo else\n");
             writeFile(token,overload_dir_name);
             closeFile(token);
         }        
@@ -176,11 +183,13 @@ void handle_W(char * filesnames){
     
 }
 
+/* Funzione per Aprire il File */
 void handle_o(char * args){
     int flag;
     char* token = strtok(args, ",");
     char * filename=token; 
     token = strtok(NULL, ",");
+    /* Setto i flag */
     if(strcmp(token,"O_LOCK")==0){
         flag=O_LOCK;
     }
@@ -193,7 +202,7 @@ void handle_o(char * args){
     if(strcmp(token,"NO_FLAG")==0){
         flag=NO_FLAG;
     }
-
+    /* Apro il file */
     openFile(filename,flag);
 
 }
@@ -241,14 +250,13 @@ void handle_f(char * socketname,struct timespec timer){
 /*funzione per settare tempo richieste successive*/
 void handle_t(char * time){
     wait_time=(int)atol(time);
-    if(p_flag)printf("tempo per richieste successive settato a %d\n",wait_time);
+    if(p_flag)printf("%sSET TIME \ntempo per richieste successive settato a %d\n %s",opseparator,wait_time,opseparator);
 }
 
 
 /*funzione che chiude la connessione con la socket*/
 void handle_x(char * sock){
     x_flag=1;
-    if(p_flag)printf("caso x ricevuto,termino\n");
     if(conn_set==1){
         if(closeConnection(socketname)!=0){
             exit(EXIT_FAILURE);
@@ -318,7 +326,7 @@ void handle_d(char * dirpath){
     }
 
     /*se la cartella esiste copio*/
-    DIR* dir = opendir(dirpath);
+    DIR* dir = opendir(dirpath);//setta il flag in caso di fallimento su ENOENT
     if(dir){
         if(strlen(dirpath)<MAXNAME){//controllo lunghezza
             strcpy(d_overload_dir_name,dirpath);//copio il nome della cartella scelta nella variabile per contenerla
@@ -329,7 +337,7 @@ void handle_d(char * dirpath){
         }
         closedir(dir);//chiudo la directory
     }
-    else if(ENOENT==errno){/* directory non esiste*/
+    else if(ENOENT==errno){/* Se la directory non esiste la creo*/
         
         int error=mkdir(dirpath, 0777);
         if(error==0){
@@ -357,7 +365,6 @@ void handle_d(char * dirpath){
 void handle_r(char * filesnames){
     char* token = strtok(filesnames, ",");
     while (token != NULL) {
-        printf("dentro r %s\n", token);
         openFile(token,NO_FLAG);
         if(d_flag){
             readFile_and_Store(token);
@@ -366,8 +373,8 @@ void handle_r(char * filesnames){
             void * buffer=NULL;
             size_t size;
             readFile(token,&buffer,&size);
-            fflush(stdout);//TODO IMPORTANTISSIMO FFLUSH NON LEVARE e a quanto pare anche strlen
-            printf("letti %d %d caratteri dal server:\n%s\n",strlen(buffer),(int)size,(char*)buffer);
+            fflush(stdout);
+            printf("letti %d caratteri dal server:\n%s\n",strlen(buffer),(char*)buffer);
             fflush(stdout);
             fflush(stderr);
             free(buffer);
@@ -379,6 +386,7 @@ void handle_r(char * filesnames){
 
 }
 
+/* Handler per lockare un file */
 void handle_l(char * filenames){
     char* token = strtok(filenames, ",");
     while (token != NULL) {
@@ -387,7 +395,7 @@ void handle_l(char * filenames){
     }
 }
 
-
+/* Handler per unlockare un file */
 void handle_u(char * filenames){
     char* token = strtok(filenames, ",");
     while (token != NULL) {
@@ -396,6 +404,7 @@ void handle_u(char * filenames){
     }
 }
 
+/* Handler per la lettura di file multipli */
 void handle_R(char * string_num_files){
     /* Prendo dalla stringa il numero di files da leggere dal server */     
     string_num_files=strstr(string_num_files,"=");
@@ -406,12 +415,12 @@ void handle_R(char * string_num_files){
 
 
 /* Funzione per la visita ricorsiva della cartella Basepath */
-void myfilerecursive(char *basePath,int n){//TODO CAMBIARE DIMENSIONE PATH COERENTEMENTE CON LE DEFINE
+void myfilerecursive(char *basePath,int n){
     if(n==0){
         //printf("sto uscendo\n");
         return;
     }
-    char path[1000];
+    char path[MAXPATH];
     struct dirent *dp;
     DIR *dir = opendir(basePath);
     int sended=0;
@@ -431,7 +440,7 @@ void myfilerecursive(char *basePath,int n){//TODO CAMBIARE DIMENSIONE PATH COERE
                         writeFile(path,overload_dir_name);
                         closeFile(path);
                     }else{
-                        printf("\nErrore nell'apertura del file %s\n", path);//TODO gestire errori
+                        printf("\nErrore nell'apertura del file %s\n", path);
                     }
                 }else{
                     //printf("Ramo else\n");
@@ -448,6 +457,7 @@ void myfilerecursive(char *basePath,int n){//TODO CAMBIARE DIMENSIONE PATH COERE
     closedir(dir);
 }
 
+/* Funzione per gestire la Scrittura di una Cartella in maniera ricorsiva */
 void handle_w(char * args){
     int n=-1;
     if(strstr(args,"=")!=NULL){
@@ -458,6 +468,7 @@ void handle_w(char * args){
     myfilerecursive(token,n); 
 }
 
+/* Funzione per la cancellazione di un file dal server */
 void handle_c(char * filesnames){
 
     char* token = strtok(filesnames, ",");
@@ -490,7 +501,7 @@ int readFile_and_Store(char * filepath){
 
     /* Lettura del contenuto dal server */
     readFile(filename,&buffer,&size);
-    fflush(stdout);//TODO IMPORTANTISSIMO FFLUSH NON LEVARE e a quanto pare anche strlen
+    fflush(stdout);
     printf("letti %d %d caratteri dal server:\n%s\n",strlen(buffer),(int)size,(char*)buffer);
     /* Apro la Cartella se E */
     if(strlen(d_overload_dir_name)>0){//se la cartella esiste  la apro
@@ -500,6 +511,7 @@ int readFile_and_Store(char * filepath){
             return -1;
         }
     }
+    /* Se la cartella e' stata settata correttamente */
     if(d_overload_dir_name != NULL && dir ){
         char complete_path[MAXPATH + MAXNAME] = "";
         strcpy(complete_path, overload_dir_name);
@@ -517,7 +529,7 @@ int readFile_and_Store(char * filepath){
             return ERROR;
         }
         
-        /* Chiudo il File */
+        /* Chiudo il File e libero la memoria  */
         if(storedFile)
             fclose(storedFile);
         }
@@ -529,17 +541,15 @@ int readFile_and_Store(char * filepath){
 }
 
 
-/* Funzione per Controllare se il file è */
-int isDir(const char* fileName){//TODO spostare su client_util
+/* Funzione per Controllare se il file è una cartella  */
+int isDir(const char* fileName){
     struct stat path;
     stat(fileName, &path);
     return S_ISREG(path.st_mode);
 }
 
 
-
-
-
+/* ######################################## FINE  ################################## */
 
 
 
